@@ -1,0 +1,105 @@
+name: simple_32k_random_read
+
+display_name: "Simple 32K random read"
+
+summary:
+  Quick test of performance with 32K Random read
+
+description: |
+  <strong>Test Objectives</strong><br/>
+  Do a simple 32k random read test!
+  <br/><br/>
+  <strong>Setup</strong>
+  <ol>
+    <li>Deploy one workload VM per host.</li>
+    <li>Pre-fill virtual disks with random data.</li>
+    <li>Run random read workload warmup for 5 minutes.</li>
+  </ol>
+  <strong>Measurement</strong>
+  <ol>
+    <li>Run random read workload for 1 minute on all VMs.</li>
+  </ol>
+  <strong>Test Requirements</strong>
+  <ul class="indented">
+    <li>vCPUs: 4 vCPUs on every node</li>
+    <li>RAM: 4 GB on every node</li>
+    <li>Cluster Storage: 116GB per node</li>
+    <li>IP Addresses: 1 per node</li>
+  </ul>
+  Note: This test scales with the number of nodes.
+
+tags:
+  - performance
+
+estimated_runtime: 1200
+
+vms:
+  - group_0:
+      template: ubuntu1604
+      vcpus: 2
+      ram_mb: 2048
+      data_disks:
+        count: 6
+        size: 16
+      count_per_node: 1
+
+workloads:
+  - Random Read Warmup:
+      vm_group: group_0
+      config_file: random_read.fio
+  - Random Read:
+      vm_group: group_0
+      config_file: random_read.fio
+      iogen_params:
+        reporting_interval: 1
+  - Sequential Read:
+      vm_group: group_0
+      config_file: sequential_read.fio
+      iogen_params:
+        reporting_interval: 1
+  - Random Write:
+      vm_group: group_0
+      config_file: random_write.fio
+      iogen_params:
+        reporting_interval: 1
+  - Sequential Write:
+      vm_group: group_0
+      config_file: sequential_write.fio
+      iogen_params:
+        reporting_interval: 1
+
+results:
+  - Random Read IOPS:
+      vm_group: group_0
+      workload_mask: Random Read
+      result_type: iops
+      aggregate: sum
+      report_group: performance
+      report_metrics:
+        - Median
+
+setup:
+  - cluster.CleanUp: {}
+  - vm_group.CloneFromTemplate:
+      vm_group_name: group_0
+  - vm_group.PowerOn:
+      vm_group_name: group_0
+  - workload.PrefillRun:
+      workload_name: Sequential Write
+  - workload.Start:
+      workload_name: Random Read Warmup
+      runtime_secs: 300
+  # Wait for counters to stabilize before entering Run phase.
+  - test.Wait:
+      duration_secs: 10
+
+run:
+  - workload.Start:
+      workload_name: Random Read
+      runtime_secs: 60
+      annotate: True
+  - test.Wait:
+      duration_secs: 60
+
+teardown:
+  - cluster.CleanUp: {}
