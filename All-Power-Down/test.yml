@@ -1,0 +1,135 @@
+name: all_power_down
+
+display_name: "All Power Down to all nodes."
+
+summary: Impact of a total loss of power.
+
+description: |
+  <strong>Test Objectives</strong><br />
+  This test is designed to show the effect of complete power loss to all nodes in the cluster
+  simulatneously.  It is expected that work will stop on all nodes when power is lost.  
+  The cluster should recover gracefully and work should continue without intervention.
+  <br /><br />
+  <Strong>Setup</strong>
+  <ol>
+    <li>Deploy the OLTP DB templates.</li>
+    <li>Clone one OLTP DB VM per host in the cluster.</li>
+    <li>Power on the VMs.</li>
+    <li>Pre-fill the OLTP DB and every VDI VM.</li>
+    <li>Warm up the OLTP DB VMs.</li>
+  </ol>
+  <strong>Measurement</strong>
+  <ol>
+    <li>Start the OLTP workload on every OLTP DB VM.</li>
+    <li>Wait for 30 minutes.</li>
+    <li>
+      Fail all nodes in the cluster by powering off through the out-of-band
+      management.
+    </li>
+    <li>Wait for 10 minutes in the failed state for observation.</li>
+    <li>Restart the workloads for another 30 minutes once the cluster has returned to an operational state.</li>
+  </ol>
+  <strong>Test Requirements</strong>
+  <ul class="indented">
+    <li>vCPUs: 4 vCPUs on every node</li>
+    <li>RAM: 4 GB on every node</li>
+    <li>Cluster Storage: 192G per node</li>
+    <li>IP Addresses: 1 per node</li>
+  </ul>
+  Note: This test scales with the number of nodes.
+  <br /><br />
+  <span style="color: #FF0000">
+    This test performs hardware power operations on the target's nodes, which
+    may result in unavailability or permanent damage to non-Nutanix targets.
+  </span>
+
+tags:
+  - availability
+  - data loss
+  - performance
+
+estimated_runtime: 37800
+
+vms:
+  - OLTP:
+      template: ubuntu1604
+      vcpus: 4
+      ram_mb: 4096
+      data_disks:
+        count: 6
+        size: 32
+      count_per_node: 1
+
+workloads:
+  - OLTP Warmup:
+      vm_group: OLTP
+      config_file: oltp.fio
+  - OLTP:
+      vm_group: OLTP
+      config_file: oltp.fio
+  - OLTP_POST:
+      vm_group: OLTP
+      config_file: oltp.fio
+
+results:
+  - OLTP IOPS:
+      vm_group: OLTP
+      result_type: iops
+      report_group: performance
+      report_metrics:
+        - Variability
+  - Cluster CPU Usage:
+      metric: CpuUsage.Avg.Megahertz
+      aggregate: sum
+  - Cluster Network Bandwidth:
+      metric: NetReceived.Avg.KilobytesPerSecond
+      aggregate: sum
+
+setup:
+  - cluster.CleanUp: {}
+  - vm_group.CloneFromTemplate:
+      vm_group_name: OLTP
+  - vm_group.PowerOn:
+      vm_group_name: OLTP
+  - workload.PrefillRun:
+      workload_name: OLTP
+  - workload.Start:
+      workload_name: OLTP Warmup
+      runtime_secs: 300
+  # Wait for counters to stabilize before entering Run phase.
+  - test.Wait:
+      duration_secs: 10
+
+run:
+  - workload.Start:
+      workload_name: OLTP
+      runtime_secs: 1800
+      stagger_secs: 60
+      async: True
+  - test.Wait:
+      duration_secs: 900
+  - nodes.PowerOff:
+      nodes: all
+      wait_secs: 0
+  - test.Wait:
+      duration_secs: 10
+  - nodes.PowerOn:
+      nodes: all
+  - test.Wait:
+      duration_secs: 30
+  - vm_group.PowerOn:
+      vm_group_name: OLTP
+  - vm_group.WaitForPowerOn:
+      vm_group_name: OLTP  
+  - workload.Start:
+      workload_name: OLTP_POST
+      runtime_secs: 900
+      stagger_secs: 60
+      async: True
+  - test.Wait:
+      duration_secs: 10
+  - workload.Wait:
+      workload_name: OLTP_POST
+
+teardown:
+  - cluster.CleanUp: {}
