@@ -1,0 +1,177 @@
+name: random_read_with_disk_zero
+
+display_name: "Random read test with Disk Zero 2G"
+
+summary:
+  Random read test with Disk zeroing inbetween 2G.
+
+description: |
+  <strong>Test Objectives</strong><br/>
+  This test is designed to quickly test four workload types: random reads,
+  sequential reads, random writes, and sequential writes.
+  <br/><br/>
+  <strong>Setup</strong>
+  <ol>
+    <li>Deploy one workload VM per host.</li>
+    <li>Pre-fill virtual disks with random data.</li>
+    <li>Run random read workload warmup for 5 minutes.</li>
+  </ol>
+  <strong>Measurement</strong>
+  <ol>
+    <li>Run random read workload for 1 minute on all VMs.</li>
+    <li>Wait 1 minute.</li>
+    <li>Run sequential read workload for 1 minute on all VMs.</li>
+    <li>Wait 1 minute.</li>
+    <li>Run random write workload for 1 minute on all VMs.</li>
+    <li>Wait 1 minute.</li>
+    <li>Run sequential write workload for 1 minute on all VMs.</li>
+  </ol>
+  <strong>Test Requirements</strong>
+  <ul class="indented">
+    <li>vCPUs: 4 vCPUs on every node</li>
+    <li>RAM: 4 GB on every node</li>
+    <li>Cluster Storage: 116GB per node</li>
+    <li>IP Addresses: 1 per node</li>
+  </ul>
+  Note: This test scales with the number of nodes.
+
+tags:
+  - performance
+
+estimated_runtime: 1200
+
+vms:
+  - group_0:
+      template: ubuntu1604
+      vcpus: 2
+      ram_mb: 2048
+      data_disks:
+        count: 6
+        size: 16
+      count_per_node: 1
+
+workloads:
+  - Random Read 16K:
+      vm_group: group_0
+      config_file: random_read_16k.fio
+      iogen_params:
+        reporting_interval: 1
+  - Random Read 32K:
+      vm_group: group_0
+      config_file: random_read_32k.fio
+      iogen_params:
+        reporting_interval: 1
+  - Random Read 64K:
+      vm_group: group_0
+      config_file: random_read_64k.fio
+      iogen_params:
+        reporting_interval: 1
+  - Sequential Write 1:
+      vm_group: group_0
+      config_file: sequential_write.fio
+  - Sequential Write 2:
+      vm_group: group_0
+      config_file: sequential_write.fio
+  - Sequential Write 3:
+      vm_group: group_0
+      config_file: sequential_write.fio
+  - Sequential Write 4:
+      vm_group: group_0
+      config_file: sequential_write.fio
+  - Sequential Write Zero 1:
+      vm_group: group_0
+      config_file: sequential_write_zero.fio
+  - Sequential Write Zero 2:
+      vm_group: group_0
+      config_file: sequential_write_zero.fio
+  - Sequential Write Zero 3:
+      vm_group: group_0
+      config_file: sequential_write_zero.fio
+  - Sequential Write Zero 4:
+      vm_group: group_0
+      config_file: sequential_write_zero.fio
+
+results:
+  - Random Read IOPS 16K:
+      vm_group: group_0
+      workload_mask: Random Read 16K
+      result_type: iops
+      aggregate: sum
+      report_group: performance
+      report_metrics:
+        - Median
+  - Random Read IOPS 32K:
+      vm_group: group_0
+      workload_mask: Random Read 32K
+      result_type: iops
+      aggregate: sum
+      report_group: performance
+      report_metrics:
+        - Median
+  - Random Read IOPS 64K:
+      vm_group: group_0
+      workload_mask: Random Read 64K
+      result_type: iops
+      aggregate: sum
+      report_group: performance
+      report_metrics:
+        - Median
+  - I/O Latency:
+      vm_group: group_0
+      result_type: latency
+      report_group: performance
+  - Cluster CPU Usage:
+      metric: CpuUsage.Avg.Megahertz
+      aggregate: sum
+
+setup:
+  - cluster.CleanUp: {}
+  - vm_group.CloneFromTemplate:
+      vm_group_name: group_0
+  - vm_group.PowerOn:
+      vm_group_name: group_0
+  - workload.Start:
+      workload_name: Sequential Write 1
+      timeout_secs: 14400
+  # Wait for counters to stabilize before entering Run phase.
+  - test.Wait:
+      duration_secs: 300
+
+run:
+  - workload.Start:
+      workload_name: Random Read 16K
+      runtime_secs: 300
+      annotate: True
+  - workload.Start:
+      workload_name: Sequential Write Zero 1
+      annotate: False
+  - test.Wait:
+      duration_secs: 60
+  - workload.Start:
+      workload_name: Sequential Write 2
+      annotate: False
+  - test.Wait:
+      duration_secs: 300
+  - workload.Start:
+      workload_name: Random Read 32K
+      runtime_secs: 300
+      annotate: True
+  - workload.Start:
+      workload_name: Sequential Write Zero 2
+      annotate: False
+  - test.Wait:
+      duration_secs: 60
+  - workload.Start:
+      workload_name: Sequential Write 3
+      annotate: False
+  - test.Wait:
+      duration_secs: 300
+  - workload.Start:
+      workload_name: Random Read 64K
+      runtime_secs: 300
+      annotate: True
+  - test.Wait:
+      duration_secs: 20
+
+teardown:
+  - cluster.CleanUp: {}
