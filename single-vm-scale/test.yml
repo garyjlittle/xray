@@ -9,7 +9,7 @@ description: |
   <strong>What's this test about?</strong><br/>
   This test scales a single VM, single vdisk, single I/O test across all nodes of the cluster.
   The first datapoint is a single VM on a single node.  Subsequent iterations add a VM to each node in the cluster.
-  e.g. For a 4 node cluster.
+  e.g. For a 4 node cluster with one VM per group:
   <ul>
   <li>Iteration 1 = 1 VM  Total
   <li>Iteration 2 = 4 VMs Total
@@ -41,9 +41,15 @@ vars:
     display_name: "Number of VM groups"
     description: |
       The number of groups of VMs deployed across the cluster.
-      Each group consists of one VM per node. A value of zero
-      performs a single VM test only.
+      Each group consists of a configurable number of VMs per
+      node. A value of zero performs a single VM test only.
     default: 48
+    min: 0
+  group_size:
+    display_name: "Number of VMs per node per group"
+    description: |
+      The number of VMs deployed on each node per group.
+    default: 1
     min: 0
   runtime:
     display_name: "Workload run time (seconds)"
@@ -81,7 +87,7 @@ vars:
     min: 0
     max: 100
 
-estimated_runtime: 1200
+estimated_runtime: {{ 300 + warmup_time + ((120 + runtime) * groups) }}
 
 vms:
  - single_worker:
@@ -95,7 +101,7 @@ vms:
      nodes: "0"
 {% for g in range(groups) %}
  - group_{{g}}:
-     count_per_node: 1
+     count_per_node: {{ group_size }}
      template: ubuntu1604
      vcpus: 2
      ram_mb: 2048
@@ -133,7 +139,7 @@ workloads:
 {% endfor %}
 
 results:
-  - IOPS (All VMs):
+  - Total IOPS (All VMs):
       vm_group: group_0
       result_type: generic
       unit: iops
@@ -152,7 +158,7 @@ results:
             }
           [30s])
         )
-  - Latency (All VMs):
+  - Average Latency (All VMs):
       vm_group: group_0
       result_type: generic
       unit: latency
@@ -184,7 +190,7 @@ results:
               __curie_filter_scenario__
             }
           [30s])
-        )) * 1000.0
+        )) * 1000000.0
 
 setup:
   - cluster.CleanUp: {}
