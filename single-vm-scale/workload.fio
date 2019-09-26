@@ -9,10 +9,10 @@ continue_on_error=all
 rate_process=poisson
 
 [disk0]
-bs=1m
+bs=8k
 size=2G
 filename=/dev/sdb
-rw=write
-iodepth=128
-
-
+iodepth=1
+rw=randrw
+percentage_random={{ random_percentage }}
+rwmixread={{ read_percentage }}
