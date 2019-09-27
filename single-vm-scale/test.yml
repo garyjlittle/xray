@@ -114,19 +114,13 @@ workloads:
   - FIO Workload (Single VM):
       vm_group: single_worker
       config_file: workload.fio
-      iogen_params:
-        reporting_interval: 1
   - FIO Workload Warmup (Single VM):
       vm_group: single_worker
       config_file: workload.fio
-      iogen_params:
-        reporting_interval: 1
 {% for g in range(groups) %}
   - FIO Workload (VM Group {{ g + 1 }}):
       vm_group: group_{{ g }}
       config_file: workload.fio
-      iogen_params:
-        reporting_interval: 1
       config_variables:
         read_percentage: {{ read_percentage }}
         random_percentage: {{ random_percentage }}
@@ -248,10 +242,10 @@ run:
   - test.Wait:
       duration_secs: {{ runtime }}
 {% endfor %}
+
+teardown:
 {% for g in range(groups) %}
   - workload.Wait:
       workload_name: FIO Workload (VM Group {{ g + 1 }})
 {% endfor %}
-
-teardown:
   - cluster.CleanUp: {}
