@@ -1,0 +1,11 @@
+[Unit]
+Description=Postgres Exporter Service
+
+[Service]
+#ExecStart=/home/nutanix/postgres/src/github.com/wrouesnel/postgres_exporter/bin/postgres_exporter_v0.5.0_linux-amd64/postgres_exporter --disable-settings-metrics --auto-discover-databases
+#ExecStart=/usr/local/bin/postgres_exporter --disable-settings-metrics --auto-discover-databases
+Environment=DATA_SOURCE_NAME=postgresql://pgxport:pgxport@127.0.0.1:5432/postgres
+ExecStart=/usr/local/bin/postgres_exporter 
+
+[Install]
+WantedBy=multi-user.target

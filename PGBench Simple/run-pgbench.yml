@@ -1,0 +1,10 @@
+- hosts: all
+  become: yes
+  become_user: nutanix
+  gather_facts: no
+
+  tasks:
+  - name: Run PGBench
+    shell: pgbench -S -s {{pgbench_scale}} -c {{pgbench_clients}} -j {{pgbench_jobs}} -T 300 {{dbname}}
+    register: pgbenchout
+  - debug: msg="{{ pgbenchout.stdout }}"
