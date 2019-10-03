@@ -66,7 +66,7 @@ vars:
       run the workload during the setup phase. This allows
       caches to warm up before measurement begins, stabilizing
       performance.
-    default: 60
+    default: 600
     min: 0
   read_percentage:
     display_name: "Workload read percentage"
@@ -229,10 +229,10 @@ setup:
 
 run:
   - workload.Start:
-      workload_name:  FIO Workload (Single VM)
+      workload_name: FIO Workload (Single VM)
       runtime_secs: {{ runtime }}
       annotate: True
-      async: False
+      async: True
 {% for g in range(groups) %}
   - workload.Start:
       workload_name: FIO Workload (VM Group {{ g + 1 }})
@@ -244,6 +244,8 @@ run:
 {% endfor %}
 
 teardown:
+  - workload.Wait:
+      workload_name: FIO Workload (Single VM)
 {% for g in range(groups) %}
   - workload.Wait:
       workload_name: FIO Workload (VM Group {{ g + 1 }})
