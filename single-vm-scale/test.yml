@@ -233,6 +233,8 @@ run:
       runtime_secs: {{ runtime }}
       annotate: True
       async: True
+  - test.Wait:
+      duration_secs: {{ runtime }}
 {% for g in range(groups) %}
   - workload.Start:
       workload_name: FIO Workload (VM Group {{ g + 1 }})
