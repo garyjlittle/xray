@@ -1,7 +1,0 @@
-- hosts: all
-  become: yes
-  gather_facts: no
-
-  tasks:
-  - name: Run PGBench
-    script: null.sh
