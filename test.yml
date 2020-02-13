@@ -1,0 +1,74 @@
+name: simulate_dbs_variable
+
+display_name: "Variable Simulate Database workloads"
+
+summary:
+  Do Bursty fio min 5s start background first. 500 IOP per guest
+
+description: "Simulate a datacenter virtualization workload with a variety of workload types"
+
+tags:
+  - hackathon
+
+estimated_runtime: 300
+
+vars: 
+    vms_per_node:
+        description: |
+            How many VMs to deploy per host
+        display_name: VMs per host
+        default: 10
+        min: 1
+
+vms:
+  - vm:
+      template: ubuntu1604
+      vcpus: 2
+      ram_mb: 2048
+      data_disks:
+        count: 3
+        size: 16
+      count_per_node: {{ vms_per_node }}
+
+workloads: []
+
+results: 
+  - Response time:
+      vm_group: vm
+      result_type: latency
+      result_hint: "Bursty IO Simulation"
+      report_group: performance
+      aggregate: mean
+      report_metrics:
+        - Variability
+  - IOPS:
+      vm_group: vm
+      result_type: iops
+      result_hint: "Bursty IO Simulation"
+      report_group: performance
+      aggregate: sum
+      report_metrics:
+        - Variability
+      
+
+setup:
+  - cluster.CleanUp: {}
+  - vm_group.CloneFromTemplate:
+      vm_group_name: vm
+  - vm_group.PowerOn:
+      vm_group_name: vm
+
+
+run:
+  - playbook.Run:
+      filename: runfio.yml
+      inventory:
+        - vm
+      forks: 100
+      remote_user: root
+      remote_pass: nutanix/4u   
+
+
+
+teardown:
+  - cluster.CleanUp: {}
