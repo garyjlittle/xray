@@ -1,0 +1,10 @@
+- hosts: all
+  become: yes
+  become_user: root
+  gather_facts: no
+
+  tasks:
+  - name: Run vdbench2
+    shell: /tmp/vdbench/vdbench -f /tmp/workload_2.vdb
+    register: vdbenchout
+  - debug: msg="{{ vdbenchout.stdout }}"
