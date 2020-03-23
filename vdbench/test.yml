@@ -32,7 +32,10 @@ vms:
         size: 16
       count_per_node: 1
 
-workloads: []
+workloads: 
+  - FILL:
+      vm_group: vdbvms
+      config_file: fill.fio
 
 results: 
   - IOPS:
@@ -51,6 +54,8 @@ setup:
       vm_group_name: vdbvms
   - vm_group.PowerOn:
       vm_group_name: vdbvms
+  - workload.PrefillRun:
+      workload_name: FILL
   - playbook.Run:
       filename: provision.yml
       inventory:
