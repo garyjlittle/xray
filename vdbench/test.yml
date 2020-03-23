@@ -73,5 +73,10 @@ run:
         - vdbvms
       remote_user: root
       remote_pass: nutanix/4u
-
+  - playbook.Run:
+      filename: run-vdbench_2.yml
+      inventory:
+        - vdbvms
+      remote_user: root
+      remote_pass: nutanix/4u
 

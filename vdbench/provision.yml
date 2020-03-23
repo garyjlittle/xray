@@ -36,5 +36,11 @@
        owner: root
        group: root
        mode: '0777'     
-
+  - name: Copy vdbench workload files
+    copy:
+       src: ./workload_2.vdb
+       dest: /tmp/workload_2.vdb
+       owner: root
+       group: root
+       mode: '0777'  
 
