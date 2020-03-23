@@ -20,7 +20,7 @@ sd=sd3,lun=/dev/sdd
 sd=sd4,lun=/dev/sde
 sd=sd5,lun=/dev/sdf
 sd=sd6,lun=/dev/sdg
-wd=wd1,sd=sd*,xfersize=8192,rdpct=100,openflags=o_direct
+wd=wd1,sd=sd*,xfersize=8192,rdpct=0,openflags=o_direct
 rd=run1,wd=wd1,iorate=max,elapsed=60,interval=10,threads=48
 
 
