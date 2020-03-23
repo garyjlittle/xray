@@ -6,5 +6,5 @@
   tasks:
   - name: Run vdbench
     shell: /tmp/vdbench/vdbench -f /tmp/workload.vdb
-    register: pgbenchout
-  - debug: msg="{{ pgbenchout.stdout }}"
+    register: vdbenchout
+  - debug: msg="{{ vdbenchout.stdout }}"
