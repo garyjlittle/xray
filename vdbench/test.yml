@@ -5,20 +5,10 @@ display_name: "Simple vdbench Scenario"
 summary:
   Do vdbench
 
-description: "Installs and runs vdbench and a file named workload.yml"
+description: "Installs and runs two vdbench profiles: workload.vdb and workload_2.vdb"
 
 tags:
-  - hackathon
-
-vars: 
-  pgbench_scale:
-    default: 1000
-  pgbench_clients:
-    default: 4
-  pgbench_transactions:
-    default: 1000000
-  pgbench_jobs:
-    default: 4
+  - vdbench
 
 estimated_runtime: 300
 
