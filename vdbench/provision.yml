@@ -1,0 +1,40 @@
+---
+- hosts: all
+  become: yes
+  gather_facts: no
+
+  tasks:
+  - name: Update apt-cache
+    apt: update_cache=yes
+  - name: Install JVM
+    apt: install_recommends=yes
+    apt: name=default-jre
+
+- hosts: all
+  become: yes
+  become_user: root
+  gather_facts: no
+
+  tasks:
+  - name: Install unzip
+    apt:
+       name: unzip
+       state: present
+  - name: Create place for vdbench to run
+    file:
+        path: /tmp/vdbench
+        state: directory
+  - name: Unzip vdbench.zip on the remote hosts
+    unarchive:
+       src: vdbench.zip
+       dest: /tmp/vdbench
+       remote_src: no
+  - name: Copy vdbench workload files
+    copy:
+       src: ./workload.vdb
+       dest: /tmp/workload.vdb
+       owner: root
+       group: root
+       mode: '0777'     
+
+

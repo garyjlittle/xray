@@ -1,0 +1,26 @@
+
+*
+* Copyright (c) 2000, 2012, Oracle and/or its affiliates. All rights reserved.
+*
+
+*
+* Author: Henk Vandenbergh.
+*
+
+
+*Example 1: Single run, one raw disk
+
+*SD:	Storage Definition
+*WD:	Workload Definition
+*RD:	Run Definition
+*
+sd=sd1,lun=/dev/sdb
+sd=sd2,lun=/dev/sdc
+sd=sd3,lun=/dev/sdd
+sd=sd4,lun=/dev/sde
+sd=sd5,lun=/dev/sdf
+sd=sd6,lun=/dev/sdg
+wd=wd1,sd=sd*,xfersize=8192,rdpct=100,openflags=o_direct
+rd=run1,wd=wd1,iorate=max,elapsed=300,interval=10,threads=16
+
+

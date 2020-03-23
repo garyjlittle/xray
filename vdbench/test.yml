@@ -1,0 +1,72 @@
+name: vdbench_v1
+
+display_name: "Simple vdbench Scenario"
+
+summary:
+  Do vdbench
+
+description: "Installs and runs vdbench and a file named workload.yml"
+
+tags:
+  - hackathon
+
+vars: 
+  pgbench_scale:
+    default: 1000
+  pgbench_clients:
+    default: 4
+  pgbench_transactions:
+    default: 1000000
+  pgbench_jobs:
+    default: 4
+
+estimated_runtime: 300
+
+vms:
+  - vdbvms:
+      template: ubuntu1604
+      vcpus: 4
+      ram_mb: 8192
+      data_disks:
+        count: 6
+        size: 16
+      count_per_node: 1
+
+workloads: []
+
+results: 
+  - IOPS:
+      vm_group: vdbvms
+      result_type: iops
+      result_hint: "vdbench for the win"
+      report_group: performance
+      aggregate: sum
+      report_metrics:
+        - Variability
+
+
+setup:
+  - cluster.CleanUp: {}
+  - vm_group.CloneFromTemplate:
+      vm_group_name: vdbvms
+  - vm_group.PowerOn:
+      vm_group_name: vdbvms
+  - playbook.Run:
+      filename: provision.yml
+      inventory:
+        - vdbvms
+      variables:
+        dbname: xraypgb
+        pgbench_scale: {{ pgbench_scale }}
+      remote_user: root
+      remote_pass: nutanix/4u
+
+run:
+  - playbook.Run:
+      filename: run-vdbench.yml
+      inventory:
+        - vdbvms
+      remote_user: root
+      remote_pass: nutanix/4u
+
+
