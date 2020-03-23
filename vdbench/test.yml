@@ -60,9 +60,6 @@ setup:
       filename: provision.yml
       inventory:
         - vdbvms
-      variables:
-        dbname: xraypgb
-        pgbench_scale: {{ pgbench_scale }}
       remote_user: root
       remote_pass: nutanix/4u
 
