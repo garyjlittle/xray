@@ -101,6 +101,7 @@ setup:
       vm_group_name: pgvms
   - playbook.Run:
       filename: provision.yml
+      forks: 99
       inventory:
         - pgvms
       variables:
