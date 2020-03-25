@@ -111,6 +111,7 @@ setup:
       remote_pass: nutanix/4u
   - playbook.Run:
       filename: setup_postgres_exporter.yml
+      forks: 99
       inventory:
         - pgvms
       variables:
@@ -121,6 +122,7 @@ setup:
 run:
   - playbook.Run:
       filename: run-pgbench.yml
+      forks: 99
       inventory:
         - pgvms
       variables:
