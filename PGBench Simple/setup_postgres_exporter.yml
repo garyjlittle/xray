@@ -26,6 +26,8 @@
         dest: /usr/local
         remote_src: yes
       become: yes
+      register: download_and_unpack_go
+      until: download_and_unpack_go.rc == 0
       retries: 5
 
   # check go version
