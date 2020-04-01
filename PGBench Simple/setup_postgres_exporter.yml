@@ -26,7 +26,7 @@
         dest: /usr/local
         remote_src: yes
       become: yes
-      retry: 5
+      retries: 5
 
   # check go version
 
