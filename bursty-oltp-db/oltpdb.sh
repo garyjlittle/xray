@@ -19,6 +19,19 @@
 # 2 - a DB datafile "read" device      (/dev/sdb)
 # 3 - a DB dataafile "write" device    (/dev/sdd)
 
+VM_PER_HOST=$1
+LARGE_PER_NODE=$2
+
+echo "VMs per Host = " $VM_PER_HOST
+echo "Large VMS per Host" = $LARGE_PER_NODE
+
+#Some databases are bigger than others.  For a given VM the value of BIGTEST determines
+#if the DB is a large or regular DB. The difference between these VMs is in the size of the 
+#burst IOPS.
+BIGTEST=$((1 + RANDOM % $VM_PER_HOST))
+
+echo "BIGTEST= " $BIGTEST
+
 
 # Pre-fill the disks - since we don't rely on xray to do this for us.
 fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdb --direct=1
@@ -37,10 +50,6 @@ MAXSLEEP=60
 SLEEPTIME=$((1 + RANDOM % $MAXSLEEP))
 sleep $SLEEPTIME
 
-#Some databases are bigger than others.  For a given VM the value of BIGTEST determines
-#if the DB is a large or regular DB. The difference between these VMs is in the size of the 
-#burst IOPS.
-BIGTEST=$((1 + RANDOM % 10))
 
 for i in $(seq 1 $ITERATIONS)
 do
