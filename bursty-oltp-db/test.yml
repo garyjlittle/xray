@@ -19,6 +19,12 @@ vars:
         display_name: VMs per host
         default: 10
         min: 1
+    large_target_per_node:
+        description: |
+            How many Large VMs are there per node on average.
+        display_name: Large VMs per host
+        default: 1
+        min: 1
 
 vms:
   - vm:
@@ -62,6 +68,9 @@ setup:
 run:
   - playbook.Run:
       filename: runfio.yml
+      variables:
+        vms_per_host: {{ vms_per_node }}
+        large_target:  {{ large_target_per_node }}
       inventory:
         - vm
       forks: 100
@@ -69,6 +78,3 @@ run:
       remote_pass: nutanix/4u   
 
 
-
-teardown:
-  - cluster.CleanUp: {}
