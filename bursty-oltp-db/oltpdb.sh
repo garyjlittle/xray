@@ -22,8 +22,8 @@
 
 #Some databases are bigger than others.  For a given VM the value of BIGTEST determines
 #if the DB is a large or regular DB. The difference between these VMs is in the size of the 
-#burst IOPS.  1 in 10 VMs is a "BIG" DB with high burst rate.
-BIGTEST=$((1 + RANDOM % $VM_PER_HOST))
+#burst IOPS.  2 in 10 VMs is a "BIG" DB with high burst rate.
+BIGTEST=$((1 + RANDOM % 10))
 
 echo "BIGTEST= " $BIGTEST
 
@@ -34,7 +34,7 @@ fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/de
 fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdd --direct=1
 
 # Wait for some stability before proceding further.
-sleep 300
+sleep 60
 
 #Number of burst/background cycles
 ITERATIONS=500
@@ -46,15 +46,13 @@ SLEEPTIME=$((1 + RANDOM % $MAXSLEEP))
 sleep $SLEEPTIME
 
 
-for i in $(seq 1 $ITERATIONS)
-do
 
 if [[ $BIGTEST -ge 9 ]] ; 
 then 
     # This is a BIG VM 2 in 10
     BURSTIOPS=$((8000 + RANDOM % 8000))
     READRATE=6000
-    BACKGROUNDIOPS=$((10 + RANDOM % 10))
+    BACKGROUNDIOPS=$((100 + RANDOM % 10))
     LOGRATE=$((100 + RANDOM % 500))
 else
     # This is a Normal VM 8 in 10
@@ -65,10 +63,13 @@ else
 fi
 
 
-
-    #Be careful with small --runtime values as fio needs to fork
+for i in $(seq 1 $ITERATIONS)
+do
+    # Change the burst all the time.
     BURSTTIME=$((5 + RANDOM % 20))
     BACKGROUNDTIME=$((15 + RANDOM % 10))
+
+    #Be careful with small --runtime values as fio needs to fork
     fio --name global \
         --bs=16k \
         --ioengine=libaio \
