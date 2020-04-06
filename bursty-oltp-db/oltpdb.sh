@@ -19,15 +19,10 @@
 # 2 - a DB datafile "read" device      (/dev/sdb)
 # 3 - a DB dataafile "write" device    (/dev/sdd)
 
-VM_PER_HOST=$1
-LARGE_PER_NODE=$2
-
-echo "VMs per Host = " $VM_PER_HOST
-echo "Large VMS per Host" = $LARGE_PER_NODE
 
 #Some databases are bigger than others.  For a given VM the value of BIGTEST determines
 #if the DB is a large or regular DB. The difference between these VMs is in the size of the 
-#burst IOPS.
+#burst IOPS.  1 in 10 VMs is a "BIG" DB with high burst rate.
 BIGTEST=$((1 + RANDOM % $VM_PER_HOST))
 
 echo "BIGTEST= " $BIGTEST
