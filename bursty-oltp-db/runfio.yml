@@ -4,4 +4,6 @@
 
   tasks:
   - name: Run OLTP DB Sim
-    script: oltpdb.sh
+    script: oltpdb.sh {{ vms_per_host }} {{ large_target }}
+    register: oltp.out
+  - debug: msg="{{ oltp.stdout }}"
