@@ -37,39 +37,7 @@ done
 
 let TOTALVM=$LT+$MT+$ST
 
-#echo "Total VM count = $TOTALVM"
-
-#echo "LARGE VMS is -->" $LT
-#echo "SMALL is -->" $ST
-#echo "MEDIUM is -->" $MT
-
-let NUMLARGE=0
-let NUMMEDIUM=0
-let NUMLSMALL=0
-
-for i in $(seq 1 $TOTALVM) 
-do
-    THISVM=$((1 + RANDOM % $TOTALVM))
-    if [[ $THISVM -le $LT ]];
-        then let NUMLARGE=$NUMLARGE+1
-        continue
-    fi
-    if [[ $THISVM -gt $MT+$LT ]];
-        then let NUMLSMALL=$NUMLSMALL+1
-        continue
-    fi
-    #Fall through
-    let NUMMEDIUM=$NUMMEDIUM+1
-done
-
-#echo "The number of large VMs actually deployed is " $NUMLARGE
-#echo "The number of medium VMs actually deployed is " $NUMMEDIUM
-#echo "The number of small VMs actually deployed is " $NUMLSMALL
-
-let TOTALDEPLOYED=$NUMLSMALL+$NUMMEDIUM+$NUMLARGE
-#echo "Total deployed = $TOTALDEPLOYED"
-
-
+# What kind of VM is _this_ vm?
 THISVM=$((1 + RANDOM % $TOTALVM))
 
 if [[ $THISVM -le $LT ]];
