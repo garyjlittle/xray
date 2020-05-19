@@ -1,9 +1,9 @@
 - hosts: all
-  become: yes
+  become: no
   gather_facts: no
 
   tasks:
   - name: Run OLTP DB Sim
-    script: oltpdb.sh {{ vms_per_host }} {{ large_target }}
+    script: oltpdb.sh  -l {{ large_target_per_cluster }} -m {{ medium_target_per_cluster }} -s {{ small_target_per_cluster }}
     register: oltp
   - debug: msg="{{ oltp.stdout }}"

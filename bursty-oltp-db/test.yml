@@ -13,19 +13,24 @@ tags:
 estimated_runtime: 300
 
 vars: 
-    vms_per_node:
+    large_target_per_cluster:
         description: |
-            How many VMs to deploy per host
-        display_name: VMs per host
+            How many Large VMs are there per node on average (16vCPU or more).
+        display_name: Large VMs per host
+        default: 5
+        min: 1
+    medium_target_per_cluster:
+        description: |
+            How many Medium VMs are there per node on average (4-16 vCPU).
+        display_name: Medium VMs per host
         default: 10
         min: 1
-    large_target_per_node:
+    small_target_per_cluster:
         description: |
-            How many Large VMs are there per node on average.
-        display_name: Large VMs per host
-        default: 1
-        min: 1
-
+            How many Small VMs are there per node on average (1-4 vCPU).
+        display_name: Small VMs per host
+        default: 35
+        min: 1        
 vms:
   - vm:
       template: ubuntu1604
@@ -33,8 +38,8 @@ vms:
       ram_mb: 2048
       data_disks:
         count: 3
-        size: 16
-      count_per_node: {{ vms_per_node }}
+        size: 1
+      count_per_cluster: {{ large_target_per_cluster + medium_target_per_cluster + small_target_per_cluster }}
 
 workloads: []
 
@@ -69,8 +74,10 @@ run:
   - playbook.Run:
       filename: runfio.yml
       variables:
-        vms_per_host: {{ vms_per_node }}
-        large_target:  {{ large_target_per_node }}
+        vms_per_cluster: {{ large_target_per_cluster + medium_target_per_cluster + small_target_per_cluster }}
+        large_target_per_cluster:  {{ large_target_per_cluster }}
+        medium_target_per_cluster:  {{ medium_target_per_cluster }}
+        small_target_per_cluster:  {{ small_target_per_cluster }}
       inventory:
         - vm
       forks: 100
