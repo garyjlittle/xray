@@ -26,36 +26,59 @@
 
 # This is done per cluster, because each VM has no idea which Host it is run on.
 
-while getopts "l:m:s:" Option
+while getopts "x:l:m:s:i:" Option
 do
     case $Option in
+        x   )   XL=$OPTARG ;;
         l   )   LT=$OPTARG ;;
-        s   )   ST=$OPTARG ;;
         m   )   MT=$OPTARG ;;
+        s   )   ST=$OPTARG ;;
+        i   )   IT=$OPTARG ;;
+
     esac
 done
 
-let TOTALVM=$LT+$MT+$ST
+let TOTALVM=$LT+$MT+$ST+$XL
+let ITERATIONS=$IT
 
-# What kind of VM is _this_ vm?
-THISVM=$((1 + RANDOM % $TOTALVM))
+# What kind of VM is _this_ vm?  vm types are determined
+# by how many cpus are given to the VM.  So we check to 
+# see how many cpus are available in _this_ guest and 
+# set the workload appropriately based on the size.
 
-if [[ $THISVM -le $LT ]];
+let NCPU=$(cat /proc/cpuinfo | grep -i vendor_id | wc -l)
+
+if [[ $NCPU -eq $XL ]];
+    then
+    DBTYPE="X-Large"
+    BURSTIOPS=$((10000 + RANDOM % 6000))
+    READRATE=12000
+    BACKGROUNDIOPS=$((500 + RANDOM % 10))
+    LOGRATE=$((400 + RANDOM % 500))    
+fi    
+
+if [[ $NCPU -eq $LT ]];
     then 
     DBTYPE="Large"
-    BURSTIOPS=$((8000 + RANDOM % 8000))
+    BURSTIOPS=$((5000 + RANDOM % 5000))
     READRATE=6000
     BACKGROUNDIOPS=$((100 + RANDOM % 10))
     LOGRATE=$((100 + RANDOM % 500))
-elif [[ $THISVM -gt $MT+$LT ]];
-    then let NUMLSMALL=$NUMLSMALL+1 
+fi
+
+if [[ $NCPU -eq $ST ]];
+    then 
+    let NUMLSMALL=$NUMLSMALL+1 
     # This is a Small DB VM
     DBTYPE="Small"
     BURSTIOPS=$((100 + RANDOM % 100))
     READRATE=400
     BACKGROUNDIOPS=$((10 + RANDOM % 10))
     LOGRATE=$((10 + RANDOM % 100))   
-else
+fi
+
+if [[ $NCPU -eq $MT ]];
+    then
     # This is a Medium VM 
     DBTYPE="Medium"
     BURSTIOPS=$((400 + RANDOM % 100))
@@ -64,11 +87,15 @@ else
     LOGRATE=$((10 + RANDOM % 100))
 fi
 
+echo "XL is $XL"
+echo "L is $LT"
+echo "M is $MT"
+echo "S is $ST"
 
-#echo "BURSTIOPS=$BURSTIOPS"
-#echo "READRATE=$READRATE"
-#echo "BACKGROUNDIOPS=$BACKGROUNDIOPS"
-#echo "LOGRATE=$LOGRATE"
+echo "BURSTIOPS=$BURSTIOPS"
+echo "READRATE=$READRATE"
+echo "BACKGROUNDIOPS=$BACKGROUNDIOPS"
+echo "LOGRATE=$LOGRATE"
 echo "DB TYPE=$DBTYPE"
 
 # Pre-fill the disks - since we don't rely on xray to do this for us.
@@ -82,9 +109,6 @@ fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/de
 # Wait for some stability before proceding further.
 sleep 60
 
-#Number of burst/background cycles
-ITERATIONS=10
-
 #Maximum time to sleep before starting up the workload.  Used to stagger start times.
 MAXSLEEP=60
 #Stagger the start of the workloads by using an initial sleep.
@@ -96,7 +120,7 @@ do
     # Change the burst all the time.
     BURSTTIME=$((5 + RANDOM % 20))
     BACKGROUNDTIME=$((15 + RANDOM % 10))
-
+    CPULOAD=$((30 + RANDOM % 50 ))
     #Be careful with small --runtime values as fio needs to fork
     fio --name global \
         --output=background.out \
@@ -121,7 +145,11 @@ do
         --rw=write \
         --iodepth=1 \
         --rate_iops=$LOGRATE \
-        --eta=never 
+        --eta=never \
+        --name cpuload \
+        --ioengine=cpuio \
+        --numjobs=$NCPU \
+        --cpuload=$CPULOAD
 
     fio --name global \
         --bs=16k \
@@ -146,5 +174,10 @@ do
         --rw=write \
         --iodepth=1 \
         --rate_iops=$LOGRATE \
-        --eta=never 
+        --eta=never \
+        --name cpuload \
+        --ioengine=cpuio \
+        --numjobs=$NCPU \
+        --cpuload=$CPULOAD
+
 done

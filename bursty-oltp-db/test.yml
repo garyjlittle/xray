@@ -13,73 +13,150 @@ tags:
 estimated_runtime: 300
 
 vars: 
-    large_target_per_cluster:
-        description: |
-            How many Large VMs are there per node on average (16vCPU or more).
-        display_name: Large VMs per host
-        default: 5
-        min: 1
-    medium_target_per_cluster:
-        description: |
-            How many Medium VMs are there per node on average (4-16 vCPU).
-        display_name: Medium VMs per host
-        default: 10
-        min: 1
+    _vcpu_per_small_vm:
+        default: 2
+    _vcpu_per_medium_vm:
+        default: 4
+    _vcpu_per_large_vm:
+        default: 16
+    _vcpu_per_xlarge_vm:
+        default: 32        
     small_target_per_cluster:
         description: |
-            How many Small VMs are there per node on average (1-4 vCPU).
-        display_name: Small VMs per host
-        default: 35
+            How many Small VMs (2vCPU) per cluster on average .
+        display_name: Small VMs per cluster
+        default: 10
         min: 1        
+    medium_target_per_cluster:
+        description: |
+            How many Medium VMs (4vCPU) per cluster on average.
+        display_name: Medium VMs per cluster
+        default: 5
+        min: 1
+    large_target_per_cluster:
+        description: |
+            How many Large VMs (16vCPU) per cluster on average.
+        display_name: Large VMs per cluster
+        default: 2
+        min: 1
+    xlarge_target_per_cluster:
+        description: |
+            How many Extra Large (32vCPU) VMs  per cluster on average.
+        display_name: Extra Large VMs per cluster
+        default: 1
+        min: 1
+    iterations:
+        description: |
+            How many cycles to run.
+        display_name: cycles
+        default: 10
+        min: 1
+        max: 500        
 vms:
-  - vm:
+  - vmsmall:
       template: ubuntu1604
-      vcpus: 2
+      vcpus: {{ _vcpu_per_small_vm }}
       ram_mb: 2048
       data_disks:
         count: 3
         size: 1
-      count_per_cluster: {{ large_target_per_cluster + medium_target_per_cluster + small_target_per_cluster }}
+      count_per_cluster: {{ small_target_per_cluster }}
 
+  - vmmedium:
+      template: ubuntu1604
+      vcpus: {{ _vcpu_per_medium_vm }}
+      ram_mb: 4096
+      data_disks:
+        count: 3
+        size: 1
+      count_per_cluster: {{ medium_target_per_cluster }}
+
+  - vmlarge:
+      template: ubuntu1604
+      vcpus: {{ _vcpu_per_large_vm }}
+      ram_mb: 16384
+      data_disks:
+        count: 3
+        size: 1
+      count_per_cluster: {{ large_target_per_cluster }}
+
+  - vmxlarge:
+      template: ubuntu1604
+      vcpus: {{ _vcpu_per_xlarge_vm }}
+      ram_mb: 32768
+      data_disks:
+        count: 3
+        size: 1
+      count_per_cluster: {{ xlarge_target_per_cluster }}
 workloads: []
 
 results: 
-  - Response time:
-      vm_group: vm
-      result_type: latency
-      result_hint: "Bursty IO Simulation"
-      report_group: performance
-      aggregate: mean
-      report_metrics:
-        - Variability
-  - IOPS:
-      vm_group: vm
+  - IOPS Small:
+      vm_group: vmsmall
       result_type: iops
       result_hint: "Bursty IO Simulation"
       report_group: performance
       aggregate: sum
       report_metrics:
         - Variability
-      
+  - IOPS Medium:
+      vm_group: vmmedium
+      result_type: iops
+      result_hint: "Bursty IO Simulation"
+      report_group: performance
+      aggregate: sum
+      report_metrics:
+        - Variability      
+  - IOPS Large:
+      vm_group: vmlarge
+      result_type: iops
+      result_hint: "Bursty IO Simulation"
+      report_group: performance
+      aggregate: sum
+      report_metrics:
+        - Variability
+  - IOPS XLarge:
+      vm_group: vmxlarge
+      result_type: iops
+      result_hint: "Bursty IO Simulation"
+      report_group: performance
+      aggregate: sum
+      report_metrics:
+        - Variability      
 
 setup:
   - cluster.CleanUp: {}
   - vm_group.CloneFromTemplate:
-      vm_group_name: vm
+      vm_group_name: vmsmall
+  - vm_group.CloneFromTemplate:
+      vm_group_name: vmmedium
+  - vm_group.CloneFromTemplate:
+      vm_group_name: vmlarge
+  - vm_group.CloneFromTemplate:
+      vm_group_name: vmxlarge      
   - vm_group.PowerOn:
-      vm_group_name: vm
-
-
+      vm_group_name: vmsmall
+  - vm_group.PowerOn:
+      vm_group_name: vmmedium
+  - vm_group.PowerOn:
+      vm_group_name: vmlarge
+  - vm_group.PowerOn:
+      vm_group_name: vmxlarge
 run:
   - playbook.Run:
       filename: runfio.yml
       variables:
         vms_per_cluster: {{ large_target_per_cluster + medium_target_per_cluster + small_target_per_cluster }}
-        large_target_per_cluster:  {{ large_target_per_cluster }}
-        medium_target_per_cluster:  {{ medium_target_per_cluster }}
-        small_target_per_cluster:  {{ small_target_per_cluster }}
+        smallcpu:  {{ _vcpu_per_small_vm }}
+        mediumcpu: {{ _vcpu_per_medium_vm }}
+        largecpu:  {{ _vcpu_per_large_vm}}
+        xlargecpu: {{ _vcpu_per_xlarge_vm }}
+        iterations: {{ iterations }}
       inventory:
-        - vm
+        - vmsmall
+        - vmmedium
+        - vmlarge
+        - vmxlarge
       forks: 100
       remote_user: root
       remote_pass: nutanix/4u   
