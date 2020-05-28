@@ -15,40 +15,48 @@ estimated_runtime: 300
 vars: 
     _vcpu_per_small_vm:
         default: 2
+    _mem_per_small_vm:
+        default: 4096    
     _vcpu_per_medium_vm:
         default: 4
+    _mem_per_medium_vm:
+        default: 16384
     _vcpu_per_large_vm:
         default: 16
+    _mem_per_large_vm:
+        default: 32768
     _vcpu_per_xlarge_vm:
-        default: 32        
+        default: 32
+    _mem_per_xlarge_vm:
+        default: 65536         
     small_target_per_cluster:
         description: |
-            How many Small VMs (2vCPU) per cluster on average .
+            How many Small VMs (2vCPU, 4GB) per cluster on average .
         display_name: Small VMs per cluster
         default: 10
         min: 1        
     medium_target_per_cluster:
         description: |
-            How many Medium VMs (4vCPU) per cluster on average.
+            How many Medium VMs (4vCPU, 16GB) per cluster on average.
         display_name: Medium VMs per cluster
         default: 5
         min: 1
     large_target_per_cluster:
         description: |
-            How many Large VMs (16vCPU) per cluster on average.
+            How many Large VMs (16vCPU, 32GB) per cluster on average.
         display_name: Large VMs per cluster
         default: 2
         min: 1
     xlarge_target_per_cluster:
         description: |
-            How many Extra Large (32vCPU) VMs  per cluster on average.
+            How many Extra Large (32vCPU, 64GB) VMs  per cluster on average.
         display_name: Extra Large VMs per cluster
         default: 1
         min: 1
     iterations:
         description: |
-            How many cycles to run.
-        display_name: cycles
+            How many cycles to run Each Cycle rougly 1 minute.
+        display_name: Total Cycles (minutes) after prefill.
         default: 10
         min: 1
         max: 500        
@@ -56,7 +64,7 @@ vms:
   - vmsmall:
       template: ubuntu1604
       vcpus: {{ _vcpu_per_small_vm }}
-      ram_mb: 2048
+      ram_mb: {{ _mem_per_small_vm }}
       data_disks:
         count: 3
         size: 1
@@ -65,7 +73,7 @@ vms:
   - vmmedium:
       template: ubuntu1604
       vcpus: {{ _vcpu_per_medium_vm }}
-      ram_mb: 4096
+      ram_mb: {{ _mem_per_medium_vm }}
       data_disks:
         count: 3
         size: 1
@@ -74,7 +82,7 @@ vms:
   - vmlarge:
       template: ubuntu1604
       vcpus: {{ _vcpu_per_large_vm }}
-      ram_mb: 16384
+      ram_mb: {{ _mem_per_large_vm}}
       data_disks:
         count: 3
         size: 1
@@ -83,9 +91,9 @@ vms:
   - vmxlarge:
       template: ubuntu1604
       vcpus: {{ _vcpu_per_xlarge_vm }}
-      ram_mb: 32768
+      ram_mb: {{ _mem_per_xlarge_vm }}
       data_disks:
-        count: 3
+        count: 6
         size: 1
       count_per_cluster: {{ xlarge_target_per_cluster }}
 workloads: []
@@ -157,8 +165,10 @@ run:
         - vmmedium
         - vmlarge
         - vmxlarge
-      forks: 100
+      forks: 255
       remote_user: root
       remote_pass: nutanix/4u   
+teardown:
+  - cluster.CleanUp: {}      
 
 

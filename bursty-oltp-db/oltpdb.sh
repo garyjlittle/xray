@@ -26,7 +26,7 @@
 
 # This is done per cluster, because each VM has no idea which Host it is run on.
 
-while getopts "x:l:m:s:i:" Option
+while getopts "x:l:m:s:i:c:" Option
 do
     case $Option in
         x   )   XL=$OPTARG ;;
@@ -34,6 +34,7 @@ do
         m   )   MT=$OPTARG ;;
         s   )   ST=$OPTARG ;;
         i   )   IT=$OPTARG ;;
+        c   )   CP=$OPTARG ;;
 
     esac
 done
@@ -48,44 +49,45 @@ let ITERATIONS=$IT
 
 let NCPU=$(cat /proc/cpuinfo | grep -i vendor_id | wc -l)
 
-if [[ $NCPU -eq $XL ]];
-    then
+case $NCPU in 
+
+    $XL ) 
     DBTYPE="X-Large"
     BURSTIOPS=$((10000 + RANDOM % 6000))
     READRATE=12000
     BACKGROUNDIOPS=$((500 + RANDOM % 10))
     LOGRATE=$((400 + RANDOM % 500))    
-fi    
-
-if [[ $NCPU -eq $LT ]];
-    then 
+    CPUFIXED=40
+    CPURAND=20
+    ;;
+    $LT ) 
     DBTYPE="Large"
     BURSTIOPS=$((5000 + RANDOM % 5000))
     READRATE=6000
     BACKGROUNDIOPS=$((100 + RANDOM % 10))
-    LOGRATE=$((100 + RANDOM % 500))
-fi
-
-if [[ $NCPU -eq $ST ]];
-    then 
-    let NUMLSMALL=$NUMLSMALL+1 
-    # This is a Small DB VM
+    LOGRATE=$((100 + RANDOM % 500))     
+    CPUFIXED=30
+    CPURAND=10
+    ;;
+    $ST ) 
     DBTYPE="Small"
     BURSTIOPS=$((100 + RANDOM % 100))
     READRATE=400
     BACKGROUNDIOPS=$((10 + RANDOM % 10))
-    LOGRATE=$((10 + RANDOM % 100))   
-fi
-
-if [[ $NCPU -eq $MT ]];
-    then
-    # This is a Medium VM 
+    LOGRATE=$((10 + RANDOM % 100))
+    CPUFIXED=10
+    CPURAND=10   
+    ;;
+    $MT )
     DBTYPE="Medium"
     BURSTIOPS=$((400 + RANDOM % 100))
     READRATE=800
     BACKGROUNDIOPS=$((10 + RANDOM % 10))
     LOGRATE=$((10 + RANDOM % 100))
-fi
+    CPUFIXED=20
+    CPURAND=20
+    ;;
+esac
 
 echo "XL is $XL"
 echo "L is $LT"
@@ -101,12 +103,19 @@ echo "DB TYPE=$DBTYPE"
 # Pre-fill the disks - since we don't rely on xray to do this for us.
 # @TODO Accept Disk size and make DB WSS Sizes larger or smaller
 # @TODO Run spin workload based on the DB size to consume CPU
-fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdb --direct=1 --eta=never --output=fill1
-fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdc --direct=1 --eta=never --output=fill2
-fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdd --direct=1 --eta=never --output=fill3
+if [[ $NCPU -eq $XL ]] ; then
+    fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdb --direct=1 --eta=never --output=fill1
+    fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdc --direct=1 --eta=never --output=fill2
+    fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdd --direct=1 --eta=never --output=fill3
+else
+    fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdb --direct=1 --eta=never --output=fill1
+    fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdc --direct=1 --eta=never --output=fill2
+    fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdd --direct=1 --eta=never --output=fill3
+    fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sde --direct=1 --eta=never --output=fill4
+    fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdf --direct=1 --eta=never --output=fill5
+fi  
 
-
-# Wait for some stability before proceding further.
+# Wait for some stability after prefill before proceding further.
 sleep 60
 
 #Maximum time to sleep before starting up the workload.  Used to stagger start times.
@@ -115,69 +124,169 @@ MAXSLEEP=60
 SLEEPTIME=$((1 + RANDOM % $MAXSLEEP))
 sleep $SLEEPTIME
 
-for i in $(seq 1 $ITERATIONS)
-do
-    # Change the burst all the time.
-    BURSTTIME=$((5 + RANDOM % 20))
-    BACKGROUNDTIME=$((15 + RANDOM % 10))
-    CPULOAD=$((30 + RANDOM % 50 ))
-    #Be careful with small --runtime values as fio needs to fork
-    fio --name global \
-        --output=background.out \
-        --bs=16k \
-        --ioengine=libaio \
-        --direct=1 \
-        --time_based \
-        --runtime=$BACKGROUNDTIME \
-        --name writes \
-        --filename=/dev/sdd \
-        --rw=randwrite \
-        --iodepth=32 \
-        --rate_iops=$BACKGROUNDIOPS \
-        --name reads \
-        --filename=/dev/sdb \
-        --rw=randread \
-        --iodepth=8 \
-        --rate_iops=$READRATE \
-        --name logwrites \
-        --bs=32k \
-        --filename=/dev/sdc \
-        --rw=write \
-        --iodepth=1 \
-        --rate_iops=$LOGRATE \
-        --eta=never \
-        --name cpuload \
-        --ioengine=cpuio \
-        --numjobs=$NCPU \
-        --cpuload=$CPULOAD
+##
+# Xlarge VM has 6 vDisks, so uses a different
+# fio profile to the others
+#
 
-    fio --name global \
-        --bs=16k \
-        --output=burst.out \
-        --ioengine=libaio \
-        --direct=1 \
-        --time_based \
-        --runtime=$BURSTTIME \
-        --name writes \
-        --filename=/dev/sdd \
-        --rw=randwrite \
-        --iodepth=32 \
-        --rate_iops=$BURSTIOPS \
-        --name reads \
-        --filename=/dev/sdb \
-        --rw=randread \
-        --iodepth=8 \
-        --rate_iops=$READRATE \
-        --name logwrites \
-        --bs=32k \
-        --filename=/dev/sdc \
-        --rw=write \
-        --iodepth=1 \
-        --rate_iops=$LOGRATE \
-        --eta=never \
-        --name cpuload \
-        --ioengine=cpuio \
-        --numjobs=$NCPU \
-        --cpuload=$CPULOAD
+if [[ $NCPU -eq $XL ]] ; then
+ # In the case of an X-Large DB, the VM has more vdisks than the other
+ # VM types, so it needs its own fio config with the additional /dev/sdX
+ # read/write streams.
+ for i in $(seq 1 $ITERATIONS)
+    do
+        # Change the burst & sustained all periods on each iteration to avoid
+        # synchronizing over time.  Try to make the average of BURST+SUSTAINED
+        # to be approx 60s (on average) so that an iteration == 1 minute.
+        BURSTTIME=$((10 + RANDOM % 20))
+        BACKGROUNDTIME=$((20 + RANDOM % 40))
+        CPULOAD=$(($CPUFIXED + RANDOM % $CPURAND ))
+        # Be careful with small --runtime values as fio needs to fork
+        # Start with the sustained workload, followed by the burst
+        fio --name global \
+            --output=background.out \
+            --bs=16k \
+            --ioengine=libaio \
+            --direct=1 \
+            --time_based \
+            --runtime=$BACKGROUNDTIME \
+            --name dbwrites0 \
+            --filename=/dev/sde \
+            --rw=randwrite\
+            --iodepth=32 \
+            --rate_iops=$(($BACKGROUNDIOPS/2)) \
+            --name dbwrites1 \
+            --filename=/dev/sdd \
+            --rw=randwrite \
+            --iodepth=32 \
+            --rate_iops=$(($BACKGROUNDIOPS/2)) \
+            --name dbreads0 \
+            --filename=/dev/sdf \
+            --rw=randread \
+            --iodepth=8 \
+            --rate_iops=$(($READRATE/2)) \
+            --name dbreads1 \
+            --filename=/dev/sdb \
+            --rw=randread \
+            --iodepth=8 \
+            --rate_iops=$(($READRATE/2)) \
+            --name logwrites \
+            --bs=32k \
+            --filename=/dev/sdc \
+            --rw=write \
+            --iodepth=1 \
+            --rate_iops=$LOGRATE \
+            --eta=never \
+            --name cpuload \
+            --ioengine=cpuio \
+            --numjobs=$NCPU \
+            --cpuload=$CPULOAD
 
-done
+        fio --name global \
+            --output=burst.out \
+            --bs=16k \
+            --ioengine=libaio \
+            --direct=1 \
+            --time_based \
+            --runtime=$BURSTTIME \
+            --name dbwrites0 \
+            --filename=/dev/sde \
+            --rw=randwrite \
+            --iodepth=32 \
+            --rate_iops=$(($BURSTIOPS/2)) \
+            --name dbwrites1 \
+            --filename=/dev/sdd \
+            --rw=randwrite \
+            --iodepth=32 \
+            --rate_iops=$(($BURSTIOPS/2)) \
+            --name dbreads0 \
+            --filename=/dev/sdb \
+            --rw=randread \
+            --iodepth=8 \
+            --rate_iops=$(($READRATE/2)) \
+            --name dbreads1 \
+            --filename=/dev/sdf \
+            --rw=randread \
+            --iodepth=8 \
+            --rate_iops=$(($READRATE/2)) \
+            --name logwrites \
+            --bs=32k \
+            --filename=/dev/sdc \
+            --rw=write \
+            --iodepth=1 \
+            --rate_iops=$LOGRATE \
+            --eta=never \
+            --name cpuload \
+            --ioengine=cpuio \
+            --numjobs=$NCPU \
+            --cpuload=$CPULOAD
+    done
+else
+    # This VM is something other than an XL and
+    # has 1 read device, one write device and one log device.
+    for i in $(seq 1 $ITERATIONS)
+    do
+        # Change the burst all the time.
+        BURSTTIME=$(( 10 + RANDOM % 20))
+        BACKGROUNDTIME=$((20 + RANDOM % 40))
+        CPULOAD=$((30 + RANDOM % 50 ))
+        #Be careful with small --runtime values as fio needs to fork
+        fio --name global \
+            --output=background.out \
+            --bs=16k \
+            --ioengine=libaio \
+            --direct=1 \
+            --time_based \
+            --runtime=$BACKGROUNDTIME \
+            --name writes \
+            --filename=/dev/sdd \
+            --rw=randwrite \
+            --iodepth=32 \
+            --rate_iops=$BACKGROUNDIOPS \
+            --name reads \
+            --filename=/dev/sdb \
+            --rw=randread \
+            --iodepth=8 \
+            --rate_iops=$READRATE \
+            --name logwrites \
+            --bs=32k \
+            --filename=/dev/sdc \
+            --rw=write \
+            --iodepth=1 \
+            --rate_iops=$LOGRATE \
+            --eta=never \
+            --name cpuload \
+            --ioengine=cpuio \
+            --numjobs=$NCPU \
+            --cpuload=$CPULOAD
+
+        fio --name global \
+            --bs=16k \
+            --output=burst.out \
+            --ioengine=libaio \
+            --direct=1 \
+            --time_based \
+            --runtime=$BURSTTIME \
+            --name writes \
+            --filename=/dev/sdd \
+            --rw=randwrite \
+            --iodepth=32 \
+            --rate_iops=$BURSTIOPS \
+            --name reads \
+            --filename=/dev/sdb \
+            --rw=randread \
+            --iodepth=8 \
+            --rate_iops=$READRATE \
+            --name logwrites \
+            --bs=32k \
+            --filename=/dev/sdc \
+            --rw=write \
+            --iodepth=1 \
+            --rate_iops=$LOGRATE \
+            --eta=never \
+            --name cpuload \
+            --ioengine=cpuio \
+            --numjobs=$NCPU \
+            --cpuload=$CPULOAD
+    done
+fi
