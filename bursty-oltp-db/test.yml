@@ -57,7 +57,7 @@ vars:
         description: |
             How many cycles to run Each Cycle rougly 1 minute.
         display_name: Total Cycles (minutes) after prefill.
-        default: 10
+        default: 30
         min: 1
         max: 500        
 vms:
