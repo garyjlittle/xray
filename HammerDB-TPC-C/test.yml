@@ -1,0 +1,76 @@
+name: mssql_hdb_64gbx12_500wh_32vu
+
+display_name: "MSSQL 12vcpu_64gb 6x512g 500wh_32vu"
+
+summary:
+  Run MSSSQL
+
+description: ""
+
+tags:
+  - performance
+  - application
+
+estimated_runtime: 300
+
+vms:
+  - msvms:
+      template: ubuntu1604
+      vcpus: 12
+      ram_mb: 65536
+      data_disks:
+        count: 12
+        size: 512
+      count_per_node: 1
+
+workloads: []
+
+results: 
+  - IOPS:
+      vm_group: msvms
+      result_type: iops
+      result_hint: "MAX POWAAAAAAAA IOPS."
+      report_group: performance
+      report_metrics:
+        - Variability
+  - I/O Latency:
+      vm_group: msvms
+      result_type: latency
+      result_hint: "FASTER IS BETTER"
+      report_group: performance
+      report_metrics:
+        - Median
+
+
+setup:
+  - cluster.CleanUp: {}
+  - vm_group.CloneFromTemplate:
+      vm_group_name: msvms
+  - vm_group.PowerOn:
+      vm_group_name: msvms
+  - playbook.Run:
+      filename: install_packs.yml
+      inventory:
+        - msvms
+      remote_user: nutanix
+      remote_pass: nutanix/4u
+  - playbook.Run:
+      filename: hammerdb_build.yml
+      inventory:
+        - msvms
+      remote_user: nutanix
+      remote_pass: nutanix/4u
+  - test.Wait:
+      duration_secs: 1
+
+run:
+  - playbook.Run:
+      filename: hammerdb_run.yml
+      inventory:
+        - msvms
+      remote_user: nutanix
+      remote_pass: nutanix/4u
+
+teardown:
+  - test.Wait:
+      duration_secs: 1
