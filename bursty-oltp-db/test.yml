@@ -29,31 +29,31 @@ vars:
         default: 32
     _mem_per_xlarge_vm:
         default: 65536         
-    1_small_target_per_cluster:
+    A_small_target_per_cluster:
         description: |
-            How many Small VMs (2vCPU, 4GB) per cluster on average .
+            How many Small VMs (2vCPU, 4GB) per cluster on average.
         display_name: Small VMs per cluster
         default: 10
         min: 1        
-    2_medium_target_per_cluster:
+    B_medium_target_per_cluster:
         description: |
             How many Medium VMs (4vCPU, 16GB) per cluster on average.
         display_name: Medium VMs per cluster
         default: 5
         min: 1
-    3_large_target_per_cluster:
+    C_large_target_per_cluster:
         description: |
             How many Large VMs (16vCPU, 32GB) per cluster on average.
         display_name: Large VMs per cluster
         default: 2
         min: 1
-    4_xlarge_target_per_cluster:
+    D_xlarge_target_per_cluster:
         description: |
             How many Extra Large (32vCPU, 64GB) VMs  per cluster on average.
         display_name: Extra Large VMs per cluster
         default: 1
         min: 1
-    iterations:
+    E_iterations:
         description: |
             How many cycles to run Each Cycle rougly 1 minute.
         display_name: Total Cycles (minutes) after prefill.
@@ -68,7 +68,7 @@ vms:
       data_disks:
         count: 3
         size: 1
-      count_per_cluster: {{ 1_small_target_per_cluster }}
+      count_per_cluster: {{ A_small_target_per_cluster }}
 
   - vmmedium:
       template: ubuntu1604
@@ -77,7 +77,7 @@ vms:
       data_disks:
         count: 3
         size: 1
-      count_per_cluster: {{ 2_medium_target_per_cluster }}
+      count_per_cluster: {{ B_medium_target_per_cluster }}
 
   - vmlarge:
       template: ubuntu1604
@@ -86,7 +86,7 @@ vms:
       data_disks:
         count: 3
         size: 1
-      count_per_cluster: {{ 3_large_target_per_cluster }}
+      count_per_cluster: {{ C_large_target_per_cluster }}
 
   - vmxlarge:
       template: ubuntu1604
@@ -95,7 +95,7 @@ vms:
       data_disks:
         count: 6
         size: 1
-      count_per_cluster: {{ 4_xlarge_target_per_cluster }}
+      count_per_cluster: {{ D_xlarge_target_per_cluster }}
 workloads: []
 
 results: 
@@ -154,12 +154,12 @@ run:
   - playbook.Run:
       filename: runfio.yml
       variables:
-        vms_per_cluster: {{ 3_large_target_per_cluster + 2_medium_target_per_cluster + 1_small_target_per_cluster }}
+        vms_per_cluster: {{ A_small_target_per_cluster + B_medium_target_per_cluster + C_large_target_per_cluster + D_xlarge_target_per_cluster }}
         smallcpu:  {{ _vcpu_per_small_vm }}
         mediumcpu: {{ _vcpu_per_medium_vm }}
         largecpu:  {{ _vcpu_per_large_vm}}
         xlargecpu: {{ _vcpu_per_xlarge_vm }}
-        iterations: {{ iterations }}
+        iterations: {{ E_iterations }}
       inventory:
         - vmsmall
         - vmmedium
