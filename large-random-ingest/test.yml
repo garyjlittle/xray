@@ -1,6 +1,6 @@
-name: bigdata_ingestion_random
+name: bigdata_ingestion_random_2TB
 
-display_name: "Big Data Ingestion Random"
+display_name: "Big Data Ingestion Random 2TB"
 
 summary: Demonstrate Big Data Ingestion throughput/bandwidth
 
@@ -48,7 +48,7 @@ vms:
       ram_mb: 4096
       data_disks:
         count: 4
-        size: 260
+        size: 580
       nodes: "0"
       count_per_node: 1
 
