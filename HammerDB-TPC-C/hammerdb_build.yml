@@ -1,0 +1,10 @@
+- hosts: all
+  become: yes
+  become_user: nutanix
+  gather_facts: no
+
+  tasks:
+  - name:  Running HammerDB
+    shell: cd /home/nutanix/HammerDB-3.3/; ./hammerdbcli auto /home/nutanix/hdb_autobuild.tcl
+    register: hdbout
+  - debug: msg="{{ hdbout.stdout }}"

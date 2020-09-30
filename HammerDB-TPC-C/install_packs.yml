@@ -1,0 +1,199 @@
+---
+- hosts: all
+  become: yes
+  gather_facts: no
+  vars:
+    vg_data_name: mssqld
+    lv_data_name: data
+    raw_data_disks: /dev/sdd,/dev/sde,/dev/sdf,/dev/sdg
+    mnt_data: /mssql/data
+    vg_log_name: mssqll
+    lv_log_name: log
+    raw_log_disks: /dev/sdb,/dev/sdc
+    mnt_log: /mssql/log
+    fs: ext4
+
+  tasks:
+  - name: Add an Apt signing key for MSSQL
+    apt_key:
+      url: https://packages.microsoft.com/keys/microsoft.asc
+      state: present
+
+  - name: Add mssql server repository into sources list.
+    apt_repository:
+      repo: deb https://packages.microsoft.com/ubuntu/16.04/mssql-server-2019 xenial main
+      state: present
+
+  - name: Add mssql cmdline repository into sources list.
+    apt_repository:
+      repo: deb https://packages.microsoft.com/ubuntu/16.04/prod xenial main
+      state: present
+
+  - name: Update apt-cache
+    apt: update_cache=yes
+
+  - name: Install mssql-server
+    apt: name={{item}}
+    with_items:
+        - mssql-server
+        - mssql-tools
+        - unixodbc-dev
+    environment:
+      ACCEPT_EULA: 'y'
+
+  - name: Create the "{{ vg_data_name }}" Volume group.
+    lvg:
+      pvs: "{{ raw_data_disks }}"
+      vg: "{{ vg_data_name }}"
+      pesize: "8"
+      pv_options: '-Z y'
+      force: no
+      state: present
+
+  - name: Create the "{{ lv_data_name }}" Logical Volume.
+    lvol:
+      vg: "{{ vg_data_name }}"
+      lv: "{{ lv_data_name }}"
+      size: 1024g
+      active: yes
+      force: no
+      opts: "--stripes 4 --stripesize 1024kB"
+      state: present
+
+  - name: Create a "{{ fs }}" filesystem on lvm "/dev/mapper/{{ vg_data_name }}-{{ lv_data_name }}".
+    filesystem:
+      fstype: "{{ fs }}"
+      dev: "/dev/mapper/{{ vg_data_name }}-{{ lv_data_name }}"
+      force: no
+
+  - name: Create the "{{ vg_log_name }}" Volume group.
+    lvg:
+      pvs: "{{ raw_log_disks }}"
+      vg: "{{ vg_log_name }}"
+      pesize: "8"
+      pv_options: '-Z y'
+      force: no
+      state: present
+
+  - name: Create the "{{ lv_log_name }}" Logical Volume.
+    lvol:
+      vg: "{{ vg_log_name }}"
+      lv: "{{ lv_log_name }}"
+      size: 200g
+      active: yes
+      opts: "--stripes 2 --stripesize 1024kB"
+      force: no
+      state: present
+
+  - name: Create a "{{ fs }}" filesystem on lvm "/dev/mapper/{{ vg_log_name}}-{{ lv_log_name}}".
+    filesystem:
+      fstype: "{{ fs }}"
+      dev: "/dev/mapper/{{ vg_log_name }}-{{ lv_log_name }}"
+      force: no
+
+  - name: Create a directory to mount the data filesystem.
+    file:
+      path: "{{ mnt_data }}"
+      state: directory
+      owner: mssql
+      group: mssql
+      mode: '0755'
+
+  - name: Mount the created "{{ fs }}" filesystem.
+    mount:
+      path: "{{ mnt_data }}"
+      src: "/dev/mapper/{{ vg_data_name}}-{{ lv_data_name}}"
+      fstype: "{{ fs }}"
+      opts: rw,nosuid,noexec
+      state: mounted
+
+  - name: Create a directory to mount the log filesystem.
+    file:
+      path: "{{ mnt_log }}"
+      state: directory
+      owner: mssql
+      group: mssql
+      mode: '0755'
+
+  - name: Mount the created "{{ fs }}" filesystem.
+    mount:
+      path: "{{ mnt_log }}"
+      src: "/dev/mapper/{{ vg_log_name}}-{{ lv_log_name }}"
+      fstype: "{{ fs }}"
+      opts: rw,nosuid,noexec
+      state: mounted
+
+  - name: Ensure permission for mnt_data.
+    file:
+      path: "{{ mnt_data }}"
+      state: directory
+      owner: mssql
+      group: mssql
+      mode: '0755'
+
+  - name: Ensure permission for mnt_log.
+    file:
+      path: "{{ mnt_log }}"
+      state: directory
+      owner: mssql
+      group: mssql
+      mode: '0755'
+
+  - name: Set filelocation.defaultdatadir
+    shell: sudo /opt/mssql/bin/mssql-conf set filelocation.defaultdatadir "{{ mnt_data }}"
+    register: default_data
+  - debug: msg="{{ default_data.stdout }}"
+
+  - name: Set filelocation.defaultlogdir
+    shell: sudo /opt/mssql/bin/mssql-conf set filelocation.defaultlogdir "{{ mnt_log }}"
+    register: default_log
+  - debug: msg="{{ default_log.stdout }}"
+
+#  - name: mssql-server setup
+#    mssql_conf:
+#      setup_sa_password: nutanix/4u
+#      login_name: 'sa'
+#      login_password: nutanix/4u
+#    register: mssql_setup
+#  - debug: msg="{{ mssql_setup.stdout }}"
+
+  - name: Setup and start mssql
+    shell: sudo ACCEPT_EULA=y MSSQL_SA_PASSWORD=nutanix/4u  /opt/mssql/bin/mssql-conf --noprompt setup
+#    environment:
+#      ACCEPT_EULA: 'y'
+#      MSSQL_SA_PASSWORD: 'nutanix/4u'
+    register: mssql_setup
+  - debug: msg="{{ mssql_setup.stdout }}"
+
+# sudo /opt/mssql/bin/mssql-conf set filelocation.defaultdatadir /mssql/data/data
+# sudo systemctl restart mssql-server
+# sudo /opt/mssql/bin/mssql-conf set filelocation.defaultlogdir /mssql/log/log
+
+#  - name: Copy HammerDB-3.3-Linux.tar.gz file to all hosts
+#    template:
+#      src: "HammerDB-3.3-Linux.tar.gz"
+#      dest: /home/nutanix/
+#      mode: "755"
+
+  - name: Copy HammerDB-3.3-Linux.tar.gz file to all hosts
+    copy:
+      src: "HammerDB-3.3-Linux.tar.gz"
+      dest: /home/nutanix/
+
+  - name:  untarring hammerDB
+    shell: cd /home/nutanix; tar -xvzf HammerDB-3.3-Linux.tar.gz
+    register: untar
+  - debug: msg="{{ untar.stdout }}"
+
+  - name: Copy auto build config file to all hosts
+    template:
+      src: "hdb_autobuild.tcl"
+      dest: /home/nutanix/
+      mode: "755"
+
+  - name: Copy auto run config file to all hosts
+    template:
+      src: "hdb_autorun.tcl"
+      dest: /home/nutanix/
+      mode: "755"
+
