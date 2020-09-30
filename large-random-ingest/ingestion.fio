@@ -9,28 +9,28 @@ rate_process=poisson
 
 [db-oltp1]
 bssplit=64k/20:128k/20:256k/20:512k/20:1m/20
-size=256G
+size=512G
 filename=/dev/sdb
 rw=randwrite
 iodepth=32
 
 [db-oltp2]
 bssplit=64k/20:128k/20:256k/20:512k/20:1m/20
-size=256G
+size=512G
 filename=/dev/sdc
 rw=randwrite
 iodepth=32
 
 [db-oltp3]
 bssplit=64k/20:128k/20:256k/20:512k/20:1m/20
-size=256G
+size=512G
 filename=/dev/sdd
 rw=randwrite
 iodepth=32
 
 [db-oltp4]
 bssplit=64k/20:128k/20:256k/20:512k/20:1m/20
-size=256G
+size=512G
 filename=/dev/sde
 rw=randwrite
 iodepth=32
