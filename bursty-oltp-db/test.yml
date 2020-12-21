@@ -3,14 +3,14 @@ name: simulate_mixed_variable_workloads
 display_name: "Simulate Mixed Workloads"
 
 summary:
-  A Mixed workload simulation.  This workload does not cleanup 
+  A Mixed workload simulation. 
 
 description: "Simulate a datacenter virtualization workload with a variety of workload types"
 
 tags:
   - hackathon
 
-estimated_runtime: 300
+estimated_runtime: 1800
 
 vars: 
     _vcpu_per_small_vm:
