@@ -89,7 +89,7 @@ esac
 ############################# PREFILL ###############################
 # Pre-fill the disks - since we don't rely on xray to do this for us.
 ############################# PREFILL ###############################
-if [[ $NCPU -eq $XL ]] ; then
+if [[ $NCPU -ne $XL ]] ; then
     fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdb --direct=1 --eta=never --output=fill1
     fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdc --direct=1 --eta=never --output=fill2
     fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdd --direct=1 --eta=never --output=fill3
