@@ -184,7 +184,6 @@ run:
   - playbook.Run:
       filename: runfio.yml
       variables:
-        vms_per_cluster: {{ AA_small_target_per_cluster + BA_medium_target_per_cluster + CA_large_target_per_cluster + DA_xlarge_target_per_cluster }}
         smallcpu:  {{ _vcpu_per_small_vm }}
         mediumcpu: {{ _vcpu_per_medium_vm }}
         largecpu:  {{ _vcpu_per_large_vm}}
