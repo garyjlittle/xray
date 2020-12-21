@@ -1,18 +1,22 @@
 #!/bin/bash
 
-# This script drives an OLTP workload that has the following characteristics
+# This script drives an OLTP like workload that has the following characteristics
 # 1 - a log-write workload which is continuous and small sequential with 1 OIO
 # 2 - a read workload which is continuous and random across the entire workingset
 # 3 - a write workload which is very bursty - simulating periodic buffer flushes
 
-# Every DB VM runs this same script - yet not all DB's are the same size/intensity
-# when the script runs, the first thing it does is determine whether this particular
-# instance is a "large" or a "small" DB VM.  Based on the number of CPU's assigned to 
-# this VM.
+# Every DB VM runs this same script - yet not all DB's are the same size/intensity.
+# When this script runs, the first thing it does is determine whether this particular
+# instance is an "X-Larg", "large", "medium" or a "small" DB VM. The script determines
+# the kind of VM that it is running on by looking at the number of vCPU assinged to it.
+
+# The CPU count for each type of VM is sent in from the test.yml.  Each VM type must have
+# a unique CPU count so that each type can be identified.
 
 # Currently fio behaves strangley if I have simultaneous workload patterns (fixed) running
-# against the same file.  So, for the time being we have to use three separate devices.
-# The XL VM has 2X Read devices, 2X Write devices and 1XLOG device.
+# against the same file.  So, for the time being we have to use three separate IO targets.
+# S,M,L VM types have 1x Read device, 1x Write device and 1x Log device.
+# The XL VM has 2X Read devices, 2X Write devices and 1x Log device.
 
 # 1 - a log device                     (/dev/sdc)
 # 2 - a DB datafile "read" device      (/dev/sdb)
@@ -24,6 +28,9 @@
 # ST= Number of CPU in Small VM Type
 # IT= Number of iterations to do
 
+
+# Get the mapping of CPU count for each VM type (xlms).
+# Also get the number of iterations to execute (i)
 while getopts "x:l:m:s:i:c:" Option
 do
     case $Option in
