@@ -7,24 +7,22 @@
 
 # Every DB VM runs this same script - yet not all DB's are the same size/intensity
 # when the script runs, the first thing it does is determine whether this particular
-# instance is a "large" or a "small" DB VM.  Based on probability (default 20%) the
-# DB vm will run either "instense" workload pattern or "moderate" IO pattern.  Since
-# the distribution is random, it is expected that there will be skew across hosts
-# just like in the real world.
+# instance is a "large" or a "small" DB VM.  Based on the number of CPU's assigned to 
+# this VM.
 
 # Currently fio behaves strangley if I have simultaneous workload patterns (fixed) running
-# against the same file.  So, for the time being we have to use three separate devices
+# against the same file.  So, for the time being we have to use three separate devices.
+# The XL VM has 2X Read devices, 2X Write devices and 1XLOG device.
 
 # 1 - a log device                     (/dev/sdc)
 # 2 - a DB datafile "read" device      (/dev/sdb)
 # 3 - a DB dataafile "write" device    (/dev/sdd)
 
-
-#Some databases are bigger than others.  For a given VM the value of BIGTEST determines
-#if the DB is a large or regular DB. The difference between these VMs is in the size of the 
-#burst IOPS.  2 in 10 VMs is a "BIG" DB with high burst rate.
-
-# This is done per cluster, because each VM has no idea which Host it is run on.
+# XL= Number of CPU in Extra Large VM Type
+# LT= Number of CPU in Large VM Type
+# MT= Number of CPU in Medium VM Type
+# ST= Number of CPU in Small VM Type
+# IT= Number of iterations to do
 
 while getopts "x:l:m:s:i:c:" Option
 do
@@ -34,7 +32,6 @@ do
         m   )   MT=$OPTARG ;;
         s   )   ST=$OPTARG ;;
         i   )   IT=$OPTARG ;;
-        c   )   CP=$OPTARG ;;
 
     esac
 done
@@ -89,20 +86,9 @@ case $NCPU in
     ;;
 esac
 
-echo "XL is $XL"
-echo "L is $LT"
-echo "M is $MT"
-echo "S is $ST"
-
-echo "BURSTIOPS=$BURSTIOPS"
-echo "READRATE=$READRATE"
-echo "BACKGROUNDIOPS=$BACKGROUNDIOPS"
-echo "LOGRATE=$LOGRATE"
-echo "DB TYPE=$DBTYPE"
-
+############################# PREFILL ###############################
 # Pre-fill the disks - since we don't rely on xray to do this for us.
-# @TODO Accept Disk size and make DB WSS Sizes larger or smaller
-# @TODO Run spin workload based on the DB size to consume CPU
+############################# PREFILL ###############################
 if [[ $NCPU -eq $XL ]] ; then
     fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdb --direct=1 --eta=never --output=fill1
     fio --name=write --bs=1m --rw=write --ioengine=libaio --iodepth=8 --filename=/dev/sdc --direct=1 --eta=never --output=fill2
@@ -223,7 +209,7 @@ if [[ $NCPU -eq $XL ]] ; then
     done
 else
     # This VM is something other than an XL and
-    # has 1 read device, one write device and one log device.
+    # has 1 read device, 1 write device and 1 log device.
     for i in $(seq 1 $ITERATIONS)
     do
         # Change the burst all the time.
