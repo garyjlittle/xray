@@ -123,7 +123,7 @@ vms:
       vcpus: {{ _vcpu_per_xlarge_vm }}
       ram_mb: {{ _mem_per_xlarge_vm }}
       data_disks:
-        count: 6
+        count: 5
         size: {{ DB_xlarge_vdisk_size }}
       count_per_cluster: {{ DA_xlarge_target_per_cluster }}
 workloads: []
