@@ -1,9 +1,9 @@
-name: simulate_dbs_variable
+name: simulate_mixed_variable_workloads
 
-display_name: "Variable Simulate Database workloads"
+display_name: "Simulate Mixed Workloads"
 
 summary:
-  Do Bursty fio min 5s start background first. 500 IOP per guest
+  A Mixed workload simulation.  This workload does not cleanup 
 
 description: "Simulate a datacenter virtualization workload with a variety of workload types"
 
@@ -29,30 +29,60 @@ vars:
         default: 32
     _mem_per_xlarge_vm:
         default: 65536         
-    A_small_target_per_cluster:
+    AA_small_target_per_cluster:
         description: |
             How many Small VMs (2vCPU, 4GB) per cluster on average.
         display_name: Small VMs per cluster
         default: 10
-        min: 1        
-    B_medium_target_per_cluster:
+        min: 1   
+    AB_small_vdisk_size:
+        description: |
+            How large are vdisks for the small VM types
+        display_name: Small VM disk size
+        default: 4
+        min: 1
+        max: 32
+    BA_medium_target_per_cluster:
         description: |
             How many Medium VMs (4vCPU, 16GB) per cluster on average.
         display_name: Medium VMs per cluster
         default: 5
         min: 1
-    C_large_target_per_cluster:
+    BB_medium_vdisk_size:
+        description: |
+            How large are vdisks for the medium VM types
+        display_name: Medium VM disk size
+
+        default: 8
+        min: 1
+        max: 64 
+    CA_large_target_per_cluster:
         description: |
             How many Large VMs (16vCPU, 32GB) per cluster on average.
         display_name: Large VMs per cluster
         default: 2
         min: 1
-    D_xlarge_target_per_cluster:
+    CB_large_vdisk_size:
+        description: |
+            How large are vdisks for the large VM types
+        display_name: Large VM disk size
+        default: 16
+        min: 1
+        max: 128
+    DA_xlarge_target_per_cluster:
         description: |
             How many Extra Large (32vCPU, 64GB) VMs  per cluster on average.
         display_name: Extra Large VMs per cluster
         default: 1
         min: 1
+    DB_xlarge_vdisk_size:
+        description: |
+            How large are vdisks for the XLarge VM types
+        display_name: Extra Large VM disk size
+        default: 32
+        min: 1
+        max: 256
+
     E_iterations:
         description: |
             How many cycles to run Each Cycle rougly 1 minute.
@@ -67,8 +97,8 @@ vms:
       ram_mb: {{ _mem_per_small_vm }}
       data_disks:
         count: 3
-        size: 1
-      count_per_cluster: {{ A_small_target_per_cluster }}
+        size: {{ AB_small_vdisk_size }}
+      count_per_cluster: {{ AA_small_target_per_cluster }}
 
   - vmmedium:
       template: ubuntu1604
@@ -76,8 +106,8 @@ vms:
       ram_mb: {{ _mem_per_medium_vm }}
       data_disks:
         count: 3
-        size: 1
-      count_per_cluster: {{ B_medium_target_per_cluster }}
+        size: {{ BB_medium_vdisk_size }}
+      count_per_cluster: {{ BA_medium_target_per_cluster }}
 
   - vmlarge:
       template: ubuntu1604
@@ -85,8 +115,8 @@ vms:
       ram_mb: {{ _mem_per_large_vm}}
       data_disks:
         count: 3
-        size: 1
-      count_per_cluster: {{ C_large_target_per_cluster }}
+        size: {{ CB_large_vdisk_size }}
+      count_per_cluster: {{ CA_large_target_per_cluster }}
 
   - vmxlarge:
       template: ubuntu1604
@@ -94,8 +124,8 @@ vms:
       ram_mb: {{ _mem_per_xlarge_vm }}
       data_disks:
         count: 6
-        size: 1
-      count_per_cluster: {{ D_xlarge_target_per_cluster }}
+        size: {{ DB_xlarge_vdisk_size }}
+      count_per_cluster: {{ DA_xlarge_target_per_cluster }}
 workloads: []
 
 results: 
@@ -154,7 +184,7 @@ run:
   - playbook.Run:
       filename: runfio.yml
       variables:
-        vms_per_cluster: {{ A_small_target_per_cluster + B_medium_target_per_cluster + C_large_target_per_cluster + D_xlarge_target_per_cluster }}
+        vms_per_cluster: {{ AA_small_target_per_cluster + BA_medium_target_per_cluster + CA_large_target_per_cluster + DA_xlarge_target_per_cluster }}
         smallcpu:  {{ _vcpu_per_small_vm }}
         mediumcpu: {{ _vcpu_per_medium_vm }}
         largecpu:  {{ _vcpu_per_large_vm}}
