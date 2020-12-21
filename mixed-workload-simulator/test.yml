@@ -1,0 +1,203 @@
+name: simulate_mixed_variable_workloads
+
+display_name: "Simulate Mixed Workloads"
+
+summary:
+  A Mixed workload simulation. 
+
+description: "Simulate a datacenter virtualization workload with a variety of workload intensity"
+
+tags:
+  - hackathon
+
+estimated_runtime: 1800
+
+vars: 
+    _vcpu_per_small_vm:
+        default: 2
+    _mem_per_small_vm:
+        default: 4096    
+    _vcpu_per_medium_vm:
+        default: 4
+    _mem_per_medium_vm:
+        default: 16384
+    _vcpu_per_large_vm:
+        default: 16
+    _mem_per_large_vm:
+        default: 32768
+    _vcpu_per_xlarge_vm:
+        default: 32
+    _mem_per_xlarge_vm:
+        default: 65536         
+    AA_small_target_per_cluster:
+        description: |
+            How many Small VMs (2vCPU, 4GB) per cluster on average.
+        display_name: Small VMs per cluster
+        default: 10
+        min: 1   
+    AB_small_vdisk_size:
+        description: |
+            How large are vdisks for the small VM types
+        display_name: Small VM disk size
+        default: 4
+        min: 1
+        max: 32
+    BA_medium_target_per_cluster:
+        description: |
+            How many Medium VMs (4vCPU, 16GB) per cluster on average.
+        display_name: Medium VMs per cluster
+        default: 5
+        min: 1
+    BB_medium_vdisk_size:
+        description: |
+            How large are vdisks for the medium VM types
+        display_name: Medium VM disk size
+
+        default: 8
+        min: 1
+        max: 64 
+    CA_large_target_per_cluster:
+        description: |
+            How many Large VMs (16vCPU, 32GB) per cluster on average.
+        display_name: Large VMs per cluster
+        default: 2
+        min: 1
+    CB_large_vdisk_size:
+        description: |
+            How large are vdisks for the large VM types
+        display_name: Large VM disk size
+        default: 16
+        min: 1
+        max: 128
+    DA_xlarge_target_per_cluster:
+        description: |
+            How many Extra Large (32vCPU, 64GB) VMs  per cluster on average.
+        display_name: Extra Large VMs per cluster
+        default: 1
+        min: 1
+    DB_xlarge_vdisk_size:
+        description: |
+            How large are vdisks for the XLarge VM types
+        display_name: Extra Large VM disk size
+        default: 32
+        min: 1
+        max: 256
+
+    E_iterations:
+        description: |
+            How many cycles to run Each Cycle rougly 1 minute.
+        display_name: Total Cycles (minutes) after prefill.
+        default: 30
+        min: 1
+        max: 500        
+vms:
+  - vmsmall:
+      template: ubuntu1604
+      vcpus: {{ _vcpu_per_small_vm }}
+      ram_mb: {{ _mem_per_small_vm }}
+      data_disks:
+        count: 3
+        size: {{ AB_small_vdisk_size }}
+      count_per_cluster: {{ AA_small_target_per_cluster }}
+
+  - vmmedium:
+      template: ubuntu1604
+      vcpus: {{ _vcpu_per_medium_vm }}
+      ram_mb: {{ _mem_per_medium_vm }}
+      data_disks:
+        count: 3
+        size: {{ BB_medium_vdisk_size }}
+      count_per_cluster: {{ BA_medium_target_per_cluster }}
+
+  - vmlarge:
+      template: ubuntu1604
+      vcpus: {{ _vcpu_per_large_vm }}
+      ram_mb: {{ _mem_per_large_vm}}
+      data_disks:
+        count: 3
+        size: {{ CB_large_vdisk_size }}
+      count_per_cluster: {{ CA_large_target_per_cluster }}
+
+  - vmxlarge:
+      template: ubuntu1604
+      vcpus: {{ _vcpu_per_xlarge_vm }}
+      ram_mb: {{ _mem_per_xlarge_vm }}
+      data_disks:
+        count: 5
+        size: {{ DB_xlarge_vdisk_size }}
+      count_per_cluster: {{ DA_xlarge_target_per_cluster }}
+workloads: []
+
+results: 
+  - IOPS Small:
+      vm_group: vmsmall
+      result_type: iops
+      result_hint: "Bursty IO Simulation"
+      report_group: performance
+      aggregate: sum
+      report_metrics:
+        - Variability
+  - IOPS Medium:
+      vm_group: vmmedium
+      result_type: iops
+      result_hint: "Bursty IO Simulation"
+      report_group: performance
+      aggregate: sum
+      report_metrics:
+        - Variability      
+  - IOPS Large:
+      vm_group: vmlarge
+      result_type: iops
+      result_hint: "Bursty IO Simulation"
+      report_group: performance
+      aggregate: sum
+      report_metrics:
+        - Variability
+  - IOPS XLarge:
+      vm_group: vmxlarge
+      result_type: iops
+      result_hint: "Bursty IO Simulation"
+      report_group: performance
+      aggregate: sum
+      report_metrics:
+        - Variability      
+
+setup:
+  - cluster.CleanUp: {}
+  - vm_group.CloneFromTemplate:
+      vm_group_name: vmsmall
+  - vm_group.CloneFromTemplate:
+      vm_group_name: vmmedium
+  - vm_group.CloneFromTemplate:
+      vm_group_name: vmlarge
+  - vm_group.CloneFromTemplate:
+      vm_group_name: vmxlarge      
+  - vm_group.PowerOn:
+      vm_group_name: vmsmall
+  - vm_group.PowerOn:
+      vm_group_name: vmmedium
+  - vm_group.PowerOn:
+      vm_group_name: vmlarge
+  - vm_group.PowerOn:
+      vm_group_name: vmxlarge
+run:
+  - playbook.Run:
+      filename: runfio.yml
+      variables:
+        smallcpu:  {{ _vcpu_per_small_vm }}
+        mediumcpu: {{ _vcpu_per_medium_vm }}
+        largecpu:  {{ _vcpu_per_large_vm}}
+        xlargecpu: {{ _vcpu_per_xlarge_vm }}
+        iterations: {{ E_iterations }}
+      inventory:
+        - vmsmall
+        - vmmedium
+        - vmlarge
+        - vmxlarge
+      forks: 255
+      remote_user: root
+      remote_pass: nutanix/4u   
+teardown:
+  - cluster.CleanUp: {}      
+
+
