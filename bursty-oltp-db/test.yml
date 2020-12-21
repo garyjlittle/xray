@@ -5,7 +5,7 @@ display_name: "Simulate Mixed Workloads"
 summary:
   A Mixed workload simulation. 
 
-description: "Simulate a datacenter virtualization workload with a variety of workload types"
+description: "Simulate a datacenter virtualization workload with a variety of workload intensity"
 
 tags:
   - hackathon
