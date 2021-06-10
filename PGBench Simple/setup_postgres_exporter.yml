@@ -22,13 +22,10 @@
 
     - name: Unarchive GO on all hosts
       unarchive:
-        src: https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz
+        src: https://golang.org/dl/go1.16.5.linux-amd64.tar.gz
         dest: /usr/local
         remote_src: yes
       become: yes
-      register: download_and_unpack_go
-      until: download_and_unpack_go is succeeded
-      retries: 5
 
   # check go version
 
@@ -40,7 +37,7 @@
     - debug:
         var: go_env
 
-  # Install Mage
+  # Install Pre-requisite packages needed for the postres exporter
 
     - name: Install git
       become: yes
@@ -49,35 +46,23 @@
         state: present
         update_cache: yes
 
-    - name: Get Mage
-      shell: "{{ go_bin }} get -u -d github.com/magefile/mage"
-      environment: "{{proxy_env}}"
-
-    - name: Setup Mage
-      shell: "cd {{ go_path }}/src/github.com/magefile/mage; {{ go_bin }} run bootstrap.go"
-      environment: "{{proxy_env}}"
+    - name: Install curl
+      become: yes
+      apt:
+        name: curl
+        state: present
+        update_cache: yes  
 
   # Install postgres_exporter
 
     - name: Get postgres_exporter
-      shell: "{{ go_bin }} get github.com/wrouesnel/postgres_exporter"
+      shell: "cd {{ go_path }} ;  git clone https://github.com/prometheus-community/postgres_exporter.git"
       environment: "{{proxy_env}}"
       ignore_errors: yes
 
     - name: Setup postgres_exporter
-      shell: "cd {{ go_path }}/src/github.com/wrouesnel/postgres_exporter; {{ go_bin }} run mage.go binary"
+      shell: "cd {{ go_path }}/postgres_exporter ; make build"
       environment: "{{proxy_env}}"
-
-    - name: Find postgres_exporter binary path
-      find:
-        paths: "{{ go_path }}/src/github.com/wrouesnel/postgres_exporter/bin"
-        file_type: "file"
-        recurse: yes
-      become: yes
-      register: find_result
-
-    - debug:
-        var: find_result
 
     - name: Ensure user has access to database
       postgresql_user:
@@ -91,7 +76,7 @@
 
     - name: Copy postgres_exporter to /usr/local/bin
       copy:
-        src: "{{ find_result.files[0].path }}"
+        src: "{{ go_path }}/postgres_exporter/postgres_exporter"
         dest: "/usr/local/bin/"
         force: yes
         mode: '0755'
@@ -112,10 +97,3 @@
       systemd:
         state: started
         name: postgres_exporter
-
-
-  # Run postgres_exporter
-  #  - name: Run postgres_exporter in the background
-  #    shell: "(cd /; ln -s {{ find_result.files[0].path }} /usr/local/bin)"
-  #    environment: "{{proxy_env}}"
-...
