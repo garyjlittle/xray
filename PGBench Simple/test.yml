@@ -136,6 +136,7 @@ run:
       filename: run-pgbench.yml
       inventory:
         - pgvms
+      forks: 100  
       variables:
         dbname: xraypgb
         pgbench_scale: {{ B_pgbench_scale }}
