@@ -1,6 +1,6 @@
 name: pgbench-stress-test-unlogged-june2021
 
-display_name: "2021 Run pgbench on all nodes to stress CPU and IO (unlogged tables) 2021"
+display_name: "PGBench Simple Benchmark"
 
 summary: |
   Scalable, pgbench benchmark scenario distributing a workload
