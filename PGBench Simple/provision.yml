@@ -36,7 +36,7 @@
 
   tasks:
   - name: Prepare pgbench
-    shell: pgbench -i -s {{pgbench_scale}} {{dbname}}
+    shell: pgbench --unlogged-tables -i -s {{pgbench_scale}} {{dbname}}
     register: pgbenchout
   - debug: msg="{{ pgbenchout.stdout }}"
 
