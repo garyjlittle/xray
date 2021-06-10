@@ -39,8 +39,9 @@ tags:
 vars:
   A_vms_per_cluster:
     default: 12
-    display_name: "Number of VMs deployed across the cluster"
+    display_name: "Number of VMs deployed across the clustea. Max 100 limited by Ansible forks"
     min: 1
+    max: 100  
   B_pgbench_scale:
     default: 1000
     display_name: "Scale Factor"
