@@ -1,15 +1,15 @@
-name: single_vm_single_vdisk
+name: single_vdisk_scalability
 
-display_name: "One vdisk per VM Test "
+display_name: "Single vDisk Scalability"
 
 summary:
-  Test of performance scaling with random read
+  Test of performance scaling with one vDisk per VM
 
 description: |
   <strong>What's this test about?</strong><br/>
-  This test scales a single VM, single vdisk, single IO test across all nodes of the cluster.
+  This test scales a single VM, single vdisk, single I/O test across all nodes of the cluster.
   The first datapoint is a single VM on a single node.  Subsequent iterations add a VM to each node in the cluster.
-  e.g. For a 4 node cluster.
+  e.g. For a 4 node cluster with one VM per group:
   <ul>
   <li>Iteration 1 = 1 VM  Total
   <li>Iteration 2 = 4 VMs Total
@@ -18,14 +18,18 @@ description: |
   <br/><br/>
   Measurement
   <ol>
-    <li>Run random read workload for 5 minutes on all VMs.</li>
+    <li>Run the workload on the single VM alone, and wait for it to finish.</li>
+    <li>Start the workload on the next group of VMs.</li>
+    <li>Run for selected amount of time.</li>
+    <li>Repeat steps 2 and 3 until the workload on all VMs has started.</li>
+    <li>Wait for all workloads to finish.</li>
   </ol>
   Test Requirements
   <ul class="indented">
-    <li>vCPUs: 2 vCPUs on every vm</li>
-    <li>RAM: 2 GB on every vm</li>
-    <li>Cluster Storage: 16GB per vm</li>
-    <li>IP Addresses: 1 per vm</li>
+    <li>vCPUs: 2 vCPUs on every VM</li>
+    <li>RAM: 2 GB on every VM</li>
+    <li>Cluster Storage: 16GB per VM</li>
+    <li>IP Addresses: 1 per VM</li>
   </ul>
   Note: This test scales with the number of nodes.
 
@@ -34,100 +38,153 @@ tags:
 
 vars:
   groups:
+    display_name: "Number of VM groups"
+    description: |
+      The number of groups of VMs deployed across the cluster.
+      Each group consists of a configurable number of VMs per
+      node. A value of zero performs a single VM test only.
     default: 48
-    min: 1
-    max: 100
+    min: 0
+  group_size:
+    display_name: "Number of VMs per node per group"
+    description: |
+      The number of VMs deployed on each node per group.
+    default: 1
+    min: 0
   runtime:
+    display_name: "Workload run time (seconds)"
+    description: |
+      The amount of time, in seconds, for each group of VMs to
+      run the workload before starting the workload on the
+      next group.
     default: 240
     min: 1
-    max: 600
   warmup_time:
-    default: 60
-    min: 10
-    max: 300
+    display_name: "Warm-up run time (seconds)"
+    description: |
+      The amount of time, in seconds, for all of the VMs to
+      run the workload during the setup phase. This allows
+      caches to warm up before measurement begins, stabilizing
+      performance.
+    default: 600
+    min: 0
+  read_percentage:
+    display_name: "Workload read percentage"
+    description: |
+      The workload read percentage.
+      Setting to 0 will result in full writes.
+      Setting to 100 will result in full reads.
+    default: 100
+    min: 0
+    max: 100
+  random_percentage:
+    display_name: "Workload randomness percentage"
+    description: |
+      The workload random percentage.
+      Setting to 0 will result in fully sequential I/O workload.
+      Setting to 100 will result in fully random I/O workload.
+    default: 100
+    min: 0
+    max: 100
 
-estimated_runtime: 1200
+estimated_runtime: {{ 300 + warmup_time + ((120 + runtime) * groups) }}
 
 vms:
  - single_worker:
+     count_per_node: 1
      template: ubuntu1604
      vcpus: 2
      ram_mb: 2048
      data_disks:
-         count: 1
-         size: 16
+       count: 1
+       size: 16
      nodes: "0"
-     count_per_node: 1
 {% for g in range(groups) %}
  - group_{{g}}:
+     count_per_node: {{ group_size }}
      template: ubuntu1604
      vcpus: 2
      ram_mb: 2048
      data_disks:
-         count: 1
-         size: 16
+       count: 1
+       size: 16
 {% endfor %}
 
 workloads:
-  - Single VM Read:
+  - FIO Workload (Single VM):
       vm_group: single_worker
-      config_file: random_read.fio
-      iogen_params:
-          reporting_interval: 1
-  - Single VM Read Warmup:
+      config_file: workload.fio
+  - FIO Workload Warmup (Single VM):
       vm_group: single_worker
-      config_file: random_read.fio
-      iogen_params:
-          reporting_interval: 1
-  - Single VM Sequential Write:
-      vm_group: single_worker
-      config_file: sequential_write.fio
+      config_file: workload.fio
 {% for g in range(groups) %}
-  - Random Read Warmup VM{{g+1}}:
-      vm_group: group_{{g}}
-      config_file: random_read.fio
-  - Random Read VM{{g+1}}:
-      vm_group: group_{{g}}
-      config_file: random_read.fio
-      iogen_params:
-          reporting_interval: 1
-  - Sequential Write VM{{g+1}}:
-      vm_group: group_{{g}}
-      config_file: sequential_write.fio
+  - FIO Workload (VM Group {{ g + 1 }}):
+      vm_group: group_{{ g }}
+      config_file: workload.fio
+      config_variables:
+        read_percentage: {{ read_percentage }}
+        random_percentage: {{ random_percentage }}
+  - FIO Workload Warmup (VM Group {{ g + 1 }}):
+      vm_group: group_{{ g }}
+      config_file: workload.fio
+      config_variables:
+        read_percentage: {{ read_percentage }}
+        random_percentage: {{ random_percentage }}
 {% endfor %}
 
 results:
-  - Random Read IOPS (All VMs):
+  - Total IOPS (All VMs):
       vm_group: group_0
       result_type: generic
+      unit: iops
       query: |
         sum(
-        irate(
+          irate(
             node_disk_reads_completed_total{
               __curie_filter_scenario__
             }
           [30s])
+        ) +
+        sum(
+          irate(
+            node_disk_writes_completed_total{
+              __curie_filter_scenario__
+            }
+          [30s])
         )
-  - Random Read Latency (All VMs):
+  - Average Latency (All VMs):
       vm_group: group_0
       result_type: generic
+      unit: latency
       query: |
-        sum(
+        (sum(
           irate(
             node_disk_read_time_seconds_total{
               __curie_filter_scenario__
             }
           [30s])
-        ) /
+        ) +
+        sum(
+          irate(
+            node_disk_write_time_seconds_total{
+              __curie_filter_scenario__
+            }
+          [30s])
+        )) / (
         sum(
           irate(
             node_disk_reads_completed_total{
               __curie_filter_scenario__
             }
           [30s])
-        ) * 1000000.0  
-        
-
+        ) +
+        sum(
+          irate(
+            node_disk_writes_completed_total{
+              __curie_filter_scenario__
+            }
+          [30s])
+        )) * 1000000.0
 
 setup:
   - cluster.CleanUp: {}
@@ -135,53 +192,64 @@ setup:
       vm_group_name: single_worker
 {% for g in range(groups) %}
   - vm_group.CloneFromTemplate:
-      vm_group_name: group_{{g}} 
+      vm_group_name: group_{{ g }}
 {% endfor %}
   - vm_group.PowerOn:
       vm_group_name: single_worker
 {% for g in range(groups) %}
   - vm_group.PowerOn:
-      vm_group_name: group_{{g}}
+      vm_group_name: group_{{ g }}
 {% endfor %}
   - workload.PrefillRun:
-      workload_name: Single VM Sequential Write 
+      workload_name: FIO Workload (Single VM)
 {% for g in range(groups) %}
   - workload.PrefillRun:
-      workload_name: Sequential Write VM{{g+1}}
+      workload_name: FIO Workload (VM Group {{ g + 1 }})
 {% endfor %}
+{% if warmup_time > 0 %}
+  - workload.Start:
+      workload_name: FIO Workload Warmup (Single VM)
+      runtime_secs: {{ warmup_time }}
+      async: True
+{% for g in range(groups) %}
+  - workload.Start:
+      workload_name: FIO Workload Warmup (VM Group {{ g + 1 }})
+      runtime_secs: {{ warmup_time }}
+      async: True
+{% endfor %}
+  - workload.Wait:
+      workload_name: FIO Workload Warmup (Single VM)
+{% for g in range(groups) %}
+  - workload.Wait:
+      workload_name: FIO Workload Warmup (VM Group {{ g + 1 }})
+{% endfor %}
+{% endif %}
   - test.Wait:
       duration_secs: 60
-  - workload.Start:
-      workload_name: Single VM Read Warmup
-      runtime_secs: {{warmup_time}}
-      async: True
-{% for g in range(groups) %}
-  - workload.Start:
-      workload_name: Random Read Warmup VM{{g+1}}
-      runtime_secs: {{warmup_time}}
-      async: True
-  - workload.Wait:
-      workload_name: Single VM Read Warmup
-{% endfor %}{% for g in range(groups) %}
-  - workload.Wait:
-      workload_name: Random Read Warmup VM{{g+1}}
-{% endfor %}
 
 run:
   - workload.Start:
-      workload_name:  Single VM Read
-      runtime_secs: {{runtime}}
-      annotate: True
-      async: False
-{% for g in range(groups) %}
-  - workload.Start:
-      workload_name: Random Read VM{{g+1}}
-      runtime_secs: {{runtime*(groups-g)}}
+      workload_name: FIO Workload (Single VM)
+      runtime_secs: {{ runtime }}
       annotate: True
       async: True
   - test.Wait:
-      duration_secs: {{runtime}}
+      duration_secs: {{ runtime }}
+{% for g in range(groups) %}
+  - workload.Start:
+      workload_name: FIO Workload (VM Group {{ g + 1 }})
+      runtime_secs: {{ runtime * (groups - g) }}
+      annotate: True
+      async: True
+  - test.Wait:
+      duration_secs: {{ runtime }}
 {% endfor %}
-teardown:
-  - cluster.CleanUp: {}
 
+teardown:
+  - workload.Wait:
+      workload_name: FIO Workload (Single VM)
+{% for g in range(groups) %}
+  - workload.Wait:
+      workload_name: FIO Workload (VM Group {{ g + 1 }})
+{% endfor %}
+  - cluster.CleanUp: {}
